@@ -1,0 +1,2593 @@
+-- // Library Tables
+local library = {}
+local utility = {}
+local obelus = {
+	connections = {}
+}
+-- // Variables
+local uis = game:GetService("UserInputService")
+local cre = game:GetService("CoreGui")
+-- // Indexing
+library.__index = library
+-- // Functions
+do
+	function utility:Create(createInfo)
+		local createInfo = createInfo or {}
+		--
+		if createInfo.Type then
+			local instance = Instance.new(createInfo.Type)
+			--
+			if createInfo.Properties and typeof(createInfo.Properties) == "table" then
+				for property, value in pairs(createInfo.Properties) do
+					instance[property] = value
+				end
+			end
+			--
+			return instance
+		end
+	end
+	--
+	function utility:Connection(connectionInfo)
+		local connectionInfo = connectionInfo or {}
+		--
+		if connectionInfo.Type then
+			local connection = connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
+			--
+			obelus.connections[#obelus.connections] = connection
+			--
+			return connection
+		end
+	end
+	--
+	function utility:RemoveConnection(connectionInfo)
+		local connectionInfo = connectionInfo or {}
+		--
+		if connectionInfo.Connection then
+			local found = table.find(obelus.connections, connectionInfo.Connection)
+			--
+			if found then
+				connectionInfo.Connection:Disconnect()
+				--
+				table.remove(obelus.connections, found)
+			end
+		end
+	end
+end
+-- // Ui Functions
+do
+	function library:Window(windowInfo)
+		-- // Variables
+		local info = windowInfo or {}
+		local window = {Pages = {}, Dragging = false, Delta = UDim2.new(), Delta2 = Vector3.new()}
+		-- // Utilisation
+		local screen = utility:Create({Type = "ScreenGui", Properties = {
+			Parent = cre,
+			DisplayOrder = 8888,
+			IgnoreGuiInset = true,
+			Name = "obleus",
+			ZIndexBehavior = "Global",
+			ResetOnSpawn = false
+		}})
+
+		game:GetService("UserInputService").InputBegan:Connect(function(k,g)
+			if not g then 
+				if k.KeyCode == Enum.KeyCode.RightShift then 
+					screen.Enabled = not screen.Enabled 
+				end
+			end
+		end)
+
+		-- added: toggle GUI with Delete key as requested
+		game:GetService("UserInputService").InputBegan:Connect(function(k,g)
+			if not g then
+				if k.KeyCode == Enum.KeyCode.Delete then
+					screen.Enabled = not screen.Enabled
+				end
+			end
+		end)
+		--
+		local main = utility:Create({Type = "Frame", Properties = {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(51, 51, 51),
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderMode = "Inset",
+			BorderSizePixel = 1,
+			Parent = screen,
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.new(0, 516, 0, 563)
+		}})
+		--
+		local frame = utility:Create({Type = "Frame", Properties = {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(12, 12, 12),
+			BorderSizePixel = 0,
+			Parent = main,
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.new(1, -2, 1, -2),
+		}})
+
+		--
+		local draggingButton = utility:Create({Type = "TextButton", Properties = {
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Parent = frame,
+			Position = UDim2.new(0, 0, 0, 0),
+			Size = UDim2.new(1, 0, 0, 24),
+			Text = ""
+		}})
+		--
+		local title = utility:Create({Type = "TextLabel", Properties = {
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Parent = frame,
+			Position = UDim2.new(0, 9, 0, 6),
+			Size = UDim2.new(1, -16, 0, 15),
+			Font = "Code",
+			RichText = true,
+			Text = info.Name or info.name or "obleus",
+			TextColor3 = Color3.fromRGB(142, 142, 142),
+			TextStrokeTransparency = 0.5,
+			TextSize = 13,
+			TextXAlignment = "Left"
+		}})
+		--
+		local accent = utility:Create({Type = "Frame", Properties = {
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Parent = frame,
+			Position = UDim2.new(0, 8, 0, 22),
+			Size = UDim2.new(1, -16, 0, 2)
+		}})
+		--
+		local accentFirst = utility:Create({Type = "Frame", Properties = {
+			BackgroundColor3 = Color3.fromRGB(170, 85, 235),
+			BorderSizePixel = 0,
+			Parent = accent,
+			Position = UDim2.new(0, 0, 0, 0),
+			Size = UDim2.new(1, 0, 0, 1)
+		}})
+		--
+		local accentSecond = utility:Create({Type = "Frame", Properties = {
+			BackgroundColor3 = Color3.fromRGB(101, 51, 141),
+			BorderSizePixel = 0,
+			Parent = accent,
+			Position = UDim2.new(0, 0, 0, 1),
+			Size = UDim2.new(1, 0, 0, 1)
+		}})
+		--
+		local tabs = utility:Create({Type = "Frame", Properties = {
+			BackgroundColor3 = Color3.fromRGB(1, 1, 1),
+			BorderSizePixel = 0,
+			Parent = frame,
+			Position = UDim2.new(0, 8, 0, 29),
+			Size = UDim2.new(1, -16, 0, 30)
+		}})
+		--
+		local tabsInline = utility:Create({Type = "Frame", Properties = {
+			BackgroundColor3 = Color3.fromRGB(1, 1, 1),
+			BorderSizePixel = 0,
+			Parent = tabs,
+			Position = UDim2.new(0, 0, 0, 0),
+			Size = UDim2.new(1, -1, 1, 0)
+		}})
+		--
+		utility:Create({Type = "UIListLayout", Properties = {
+			Padding = UDim.new(0, 0),
+			Parent = tabsInline,
+			FillDirection = "Horizontal"
+		}})
+		--
+		local pagesHolder = utility:Create({Type = "Frame", Properties = {
+			BackgroundColor3 = Color3.fromRGB(51, 51, 51),
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderMode = "Inset",
+			BorderSizePixel = 1,
+			Parent = frame,
+			Position = UDim2.new(0, 8, 0, 65),
+			Size = UDim2.new(1, -16, 1, -76)
+		}})
+		--
+		local pagesFrame = utility:Create({Type = "Frame", Properties = {
+			BackgroundColor3 = Color3.fromRGB(13, 13, 13),
+			BorderSizePixel = 0,
+			Parent = pagesHolder,
+			Position = UDim2.new(0, 1, 0, 1),
+			Size = UDim2.new(1, -2, 1, -2)
+		}})
+		--
+		local pagesFolder = utility:Create({Type = "Folder", Properties = {
+			Parent = pagesFrame
+		}})
+		-- // Functions / Connections
+		local connection = utility:Connection({Type = draggingButton.InputBegan, Callback = function(Input)
+			if not window.Dragging and Input.UserInputType == Enum.UserInputType.MouseButton1 then
+				window.Dragging = true
+				window.Delta = main.Position
+				window.Delta2 = Input.Position
+			end
+		end})
+		--
+		local connection2 = utility:Connection({Type = uis.InputEnded, Callback = function(Input)
+			if window.Dragging and Input.UserInputType == Enum.UserInputType.MouseButton1 then
+				window.Dragging = false
+				window.Delta = UDim2.new()
+				window.Delta2 = Vector3.new()
+			end
+		end})
+		--
+		local connection3 = utility:Connection({Type = uis.InputChanged, Callback = function(Input)
+			if window.Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
+				local Delta = Input.Position - window.Delta2
+				main.Position = UDim2.new(window.Delta.X.Scale, window.Delta.X.Offset + Delta.X, window.Delta.Y.Scale, window.Delta.Y.Offset + Delta.Y)
+			end
+		end})
+		-- // Nested Functions
+		function window:RefreshTabs()
+			for index, page in pairs(window.Pages) do
+				page.Tab.Size = UDim2.new(1 / (#window.Pages), 0, 1, 0)
+			end
+		end
+		--
+		function window:Page(pageInfo)
+			-- // Variables
+			local info = pageInfo or {}
+			local page = {Open = false}
+			-- // Utilisation
+			local tab = utility:Create({Type = "Frame", Properties = {
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Parent = tabsInline,
+				Size = UDim2.new(1, 0, 1, 0)
+			}})
+			--
+			local tabButton = utility:Create({Type = "TextButton", Properties = {
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Parent = tab,
+				Position = UDim2.new(0, 0, 0, 0),
+				Size = UDim2.new(1, 0, 1, 0)
+			}})
+			--
+			local tabInline = utility:Create({Type = "Frame", Properties = {
+				BackgroundColor3 = Color3.fromRGB(41, 41, 41),
+				BorderSizePixel = 0,
+				Parent = tab,
+				Position = UDim2.new(0, 1, 0, 1),
+				Size = UDim2.new(1, -1, 1, -2)
+			}})
+			--
+			local tabInlineGradient = utility:Create({Type = "Frame", Properties = {
+				BackgroundColor3 = Color3.fromRGB(41, 41, 41),
+				BorderSizePixel = 0,
+				Parent = tabInline,
+				Position = UDim2.new(0, 1, 0, 1),
+				Size = UDim2.new(1, -2, 1, -2)
+			}})
+			--
+			local tabGradient = utility:Create({Type = "UIGradient", Properties = {
+				Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))}),
+				Rotation = 90,
+				Parent = tabInlineGradient
+			}})
+			--
+			local tabTitle = utility:Create({Type = "TextLabel", Properties = {
+				AnchorPoint = Vector2.new(0, 0.5),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Parent = tabInlineGradient,
+				Position = UDim2.new(0, 4, 0.5, 0),
+				Size = UDim2.new(1, -8, 0, 15),
+				Font = "Code",
+				RichText = true,
+				Text = info.Name or info.name or "tab",
+				TextColor3 = Color3.fromRGB(142, 142, 142),
+				TextStrokeTransparency = 0.5,
+				TextSize = 13,
+				TextXAlignment = "Center"
+			}})
+			--
+			local pageHolder = utility:Create({Type = "Frame", Properties = {
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Parent = pagesFolder,
+				Position = UDim2.new(0, 10, 0, 10),
+				Size = UDim2.new(1, -20, 1, -20),
+				Visible = false
+			}})
+			--
+			local leftHolder = utility:Create({Type = "Frame", Properties = {
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Parent = pageHolder,
+				Position = UDim2.new(0, 0, 0 ,0),
+				Size = UDim2.new(0.5, -5, 1, 0)
+			}})
+			--
+			local rightHolder = utility:Create({Type = "Frame", Properties = {
+				AnchorPoint = Vector2.new(1, 0),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Parent = pageHolder,
+				Position = UDim2.new(1, 0, 0 ,0),
+				Size = UDim2.new(0.5, -5, 1, 0)
+			}})
+			-- // Functions / Connections
+			utility:Connection({Type = tabButton.MouseButton1Down, Callback = function()
+				if not page.open then
+					for index, other_page in pairs(window.Pages) do
+						if other_page ~= page then
+							other_page:Turn(false)
+						end
+					end
+				end
+				--
+				page:Turn(true)
+			end})
+			-- // Nested Functions
+			function page:Turn(state)
+				tabTitle.TextColor3 = state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(142, 142, 142)
+				tabGradient.Color = state and ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(155, 155, 155))}) or ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))})
+				--
+				page.PageHolder.Visible = state
+				page.Open = state
+			end
+			--
+			function page:Section(sectionInfo)
+				-- // Variables
+				local info = sectionInfo or {}
+				local section = {}
+				-- // Utilisation
+				local sectionMain = utility:Create({Type = "Frame", Properties = {
+					BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+					BorderColor3 = Color3.fromRGB(13, 13, 13),
+					BorderMode = "Inset",
+					BorderSizePixel = 1,
+					Parent = page[((info.Side and info.Side:lower() == "right") or (info.side and info.side:lower() == "right")) and "Right" or "Left"],
+					Position = UDim2.new(0, 0, 0, 0),
+					Size = UDim2.new(1, 0, 0, (info.Size or info.size or 200) + 4)
+				}})
+				--
+				local sectionFrame = utility:Create({Type = "Frame", Properties = {
+					BackgroundColor3 = Color3.fromRGB(19, 19, 19),
+					BorderSizePixel = 0,
+					Parent = sectionMain,
+					Position = UDim2.new(0, 1, 0, 1),
+					Size = UDim2.new(1, -2, 1, -2)
+				}})
+				--
+				local sectionTitle = utility:Create({Type = "TextLabel", Properties = {
+					AnchorPoint = Vector2.new(0, 0.5),
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Parent = sectionMain,
+					Position = UDim2.new(0, 13, 0, 0),
+					Size = UDim2.new(1, -26, 0, 15),
+					Font = "Code",
+					RichText = true,
+					Text = info.Name or info.name or "new section",
+					TextColor3 = Color3.fromRGB(205, 205, 205),
+					TextStrokeTransparency = 0.5,
+					TextSize = 13,
+					TextXAlignment = "Left",
+					ZIndex = 2
+				}})
+				--
+				local sectionTitleLine = utility:Create({Type = "Frame", Properties = {
+					BackgroundColor3 = Color3.fromRGB(19, 19, 19),
+					BorderSizePixel = 0,
+					Parent = sectionMain,
+					Position = UDim2.new(0, 9, 0, 0),
+					Size = UDim2.new(0, sectionTitle.TextBounds.X + 6, 0, 1)
+				}})
+				--
+				local sectionScrolling = utility:Create({Type = "Frame", Properties = {
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Parent = sectionMain,
+					Position = UDim2.new(0, 1, 0, 1),
+					Size = UDim2.new(1, -2, 1, -2),
+					Visible = false
+				}})
+				--
+				local sectionScrollingBar = utility:Create({Type = "Frame", Properties = {
+					AnchorPoint = Vector2.new(1, 0),
+					BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+					BorderSizePixel = 0,
+					Parent = sectionScrolling,
+					Position = UDim2.new(1, 0, 0, 0),
+					Size = UDim2.new(0, 5, 1, 0),
+					ZIndex = 3
+				}})
+				--
+				local sectionScrollingGradient = utility:Create({Type = "ImageLabel", Properties = {
+					AnchorPoint = Vector2.new(0, 1),
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Parent = sectionScrolling,
+					Position = UDim2.new(0, 0, 1, 0),
+					Size = UDim2.new(1, 0, 0, 20),
+					ZIndex = 2,
+					Image = "rbxassetid://7783533907",
+					ImageTransparency = 0,
+					ImageColor3 = Color3.fromRGB(19, 19, 19),
+					ScaleType = "Stretch"
+				}})
+				--
+				local sectionContentHolder = utility:Create({Type = "ScrollingFrame", Properties = {
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Parent = sectionFrame,
+					Position = UDim2.new(0, 0, 0, 0),
+					Size = UDim2.new(1, 0, 1, 0),
+					ZIndex = 4,
+					AutomaticCanvasSize = "Y",
+					BottomImage = "rbxassetid://7783554086",
+					CanvasSize = UDim2.new(0, 0, 0, 0),
+					MidImage = "rbxassetid://7783554086",
+					ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65),
+					ScrollBarThickness = 4,
+					TopImage = "rbxassetid://7783554086",
+					VerticalScrollBarInset = "ScrollBar"
+				}})
+				--
+				utility:Create({Type = "UIListLayout", Properties = {
+					Padding = UDim.new(0, 5),
+					Parent = sectionContentHolder,
+					FillDirection = "Vertical"
+				}})
+				--
+				local sectionInline = utility:Create({Type = "Frame", Properties = {
+					BackgroundColor3 = Color3.fromRGB(19, 19, 19),
+					BorderSizePixel = 0,
+					Parent = sectionContentHolder,
+					Position = UDim2.new(0, 1, 0, 1),
+					Size = UDim2.new(1, 0, 0, 10)
+				}})
+				-- // Functions / Connections
+				-- // Nested Functions
+				function section:Update()
+					if sectionContentHolder.AbsoluteCanvasSize.Y > ((info.Size or info.size or 200) + 4) then
+						sectionScrolling.Visible = true
+					else
+						sectionScrolling.Visible = false
+					end
+				end
+				--
+				function section:Label(labelInfo)
+					-- // Variables
+					local info = labelInfo or {}
+					local label = {}
+					-- // Utilisation
+					local contentHolder = utility:Create({Type = "Frame", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sectionContentHolder,
+						Size = UDim2.new(1, 0, 0, 14)
+					}})
+					--
+					local labelTitle = utility:Create({Type = "TextLabel", Properties = {
+						AnchorPoint = Vector2.new(0, 0),
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Size = UDim2.new(1, -(info.Offset or 36), 1, 0),
+						Position = UDim2.new(0, info.Offset or 36, 0, 0),
+						Font = "Code",
+						RichText = true,
+						Text = info.Name or info.name or info.Text or info.text or "new label",
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextStrokeTransparency = 0.5,
+						TextSize = 13,
+						TextXAlignment = "Left"
+					}})
+					-- // Functions / Connections
+					-- // Nested Functions
+					function label:Remove()
+						contentHolder:Remove()
+						label = nil
+						--
+						section:Update()
+					end
+					-- // Returning + Other
+					section:Update()
+					--
+					return label
+				end
+				--
+				function section:Toggle(toggleInfo)
+					-- // Variables
+					local info = toggleInfo or {}
+					local toggle = {
+						state = (info.Default or info.default or info.Def or info.def or false),
+						callback = (info.Callback or info.callback or function() end)
+					}
+					-- // Utilisation
+					local contentHolder = utility:Create({Type = "Frame", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sectionContentHolder,
+						Size = UDim2.new(1, 0, 0, 14)
+					}})
+					--
+					local toggleButton = utility:Create({Type = "TextButton", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Position = UDim2.new(0, 0, 0, 0),
+						Size = UDim2.new(1, 0, 1, 0),
+						Text = ""
+					}})
+					--
+					local toggleTitle = utility:Create({Type = "TextLabel", Properties = {
+						AnchorPoint = Vector2.new(0, 0),
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Size = UDim2.new(1, -36, 1, 0),
+						Position = UDim2.new(0, 36, 0, 0),
+						Font = "Code",
+						RichText = true,
+						Text = info.Name or info.name or info.Text or info.text or "new toggle",
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextStrokeTransparency = 0.5,
+						TextSize = 13,
+						TextXAlignment = "Left"
+					}})
+					--
+					local toggleFrame = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(1, 1, 1),
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Position = UDim2.new(0, 16, 0, 2),
+						Size = UDim2.new(0, 10, 0, 10)
+					}})
+					--
+					local toggleInlineGradient = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63),
+						BorderSizePixel = 0,
+						Parent = toggleFrame,
+						Position = UDim2.new(0, 1, 0, 1),
+						Size = UDim2.new(1, -2, 1, -2)
+					}})
+					--
+					local toggleGradient = utility:Create({Type = "UIGradient", Properties = {
+						Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}),
+						Rotation = 90,
+						Parent = toggleInlineGradient
+					}})
+					-- // Functions / Connections
+					local connection = utility:Connection({Type = toggleButton.MouseButton1Down, Callback = function()
+						toggle.state = not toggle.state
+						toggleInlineGradient.BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63)
+						toggle.callback(toggle.state)
+					end})
+					-- // Nested Functions
+					function toggle:Remove()
+						contentHolder:Remove()
+						toggle = nil
+						--
+						utility:RemoveConnection({Connection = connection})
+						connection = nil
+						--
+						section:Update()
+					end
+					--
+					function toggle:Get()
+						return toggle.state
+					end
+					--
+					function toggle:Set(value)
+						if typeof(value) == "boolean" then
+							toggle.state = value
+						end
+					end
+					-- // Returning + Other
+					section:Update()
+					--
+					return toggle
+				end
+				--
+				function section:Button(buttonInfo)
+					-- // Variables
+					local info = buttonInfo or {}
+					local button = {
+						callback = (info.Callback or info.callback or function() end)
+					}
+					-- // Utilisation
+					local contentHolder = utility:Create({Type = "Frame", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sectionContentHolder,
+						Size = UDim2.new(1, 0, 0, 20)
+					}})
+					--
+					local buttonButton = utility:Create({Type = "TextButton", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Position = UDim2.new(0, 0, 0, 0),
+						Size = UDim2.new(1, 0, 1, 0),
+						Text = ""
+					}})
+					--
+					local buttonFrame = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+						BorderColor3 = Color3.fromRGB(1, 1, 1),
+						BorderMode = "Inset",
+						BorderSizePixel = 1,
+						Parent = contentHolder,
+						Position = UDim2.new(0, 16, 0, 0),
+						Size = UDim2.new(1, -32, 1, 0)
+					}})
+					--
+					local buttonInline = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+						BorderSizePixel = 0,
+						Parent = buttonFrame,
+						Position = UDim2.new(0, 1, 0, 1),
+						Size = UDim2.new(1, -2, 1, -2)
+					}})
+					--
+					local buttonTitle = utility:Create({Type = "TextLabel", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Size = UDim2.new(1, -32, 1, 0),
+						Position = UDim2.new(0, 16, 0, 0),
+						Font = "Code",
+						RichText = true,
+						Text = info.Name or info.name or info.Text or info.text or "new button",
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextStrokeTransparency = 0.5,
+						TextSize = 13,
+						TextXAlignment = "Center"
+					}})
+					--
+					-- // Functions / Connections
+					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function()
+						button.callback()
+					end})
+					-- // Nested Functions
+					function button:Remove()
+						contentHolder:Remove()
+						button = nil
+						--
+						utility:RemoveConnection({Connection = connection})
+						connection = nil
+						--
+						section:Update()
+					end
+					-- // Returning + Other
+					section:Update()
+					--
+					return button
+				end
+				--
+				function section:Slider(sliderInfo)
+					-- // Variables
+					local info = sliderInfo or {}
+					local slider = {
+						state = (info.Default or info.default or info.Def or info.def or 0),
+						min = (info.Minimum or info.minimum or info.Min or info.min or 0),
+						max = (info.Maximum or info.maximum or info.Max or info.max or 10),
+						decimals = (1 / (info.Decimals or info.decimals or info.Tick or info.tick or 0.25)),
+						suffix = (info.Suffix or info.suffix or info.Ending or info.ending or ""),
+						callback = (info.Callback or info.callback or function() end),
+						holding = false
+					}
+					-- // Utilisation
+					local contentHolder = utility:Create({Type = "Frame", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sectionContentHolder,
+						Size = UDim2.new(1, 0, 0, (info.Name or info.name or info.Text or info.text) and 24 or 10)
+					}})
+					--
+					local sliderButton = utility:Create({Type = "TextButton", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Position = UDim2.new(0, 0, 0, 0),
+						Size = UDim2.new(1, 0, 1, 0),
+						Text = ""
+					}})
+					--
+					if (info.Name or info.name or info.Text or info.text) then
+						local sliderTitle = utility:Create({Type = "TextLabel", Properties = {
+							AnchorPoint = Vector2.new(0, 0),
+							BackgroundTransparency = 1,
+							BorderSizePixel = 0,
+							Parent = contentHolder,
+							Size = UDim2.new(1, -16, 0, 14),
+							Position = UDim2.new(0, 16, 0, 0),
+							Font = "Code",
+							RichText = true,
+							Text = (info.Name or info.name or info.Text or info.text),
+							TextColor3 = Color3.fromRGB(180, 180, 180),
+							TextStrokeTransparency = 0.5,
+							TextSize = 13,
+							TextXAlignment = "Left"
+						}})
+					end
+					--
+					local sliderFrame = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(1, 1, 1),
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Position = UDim2.new(0, 16, 0, (info.Name or info.name or info.Text or info.text) and 14 or 0),
+						Size = UDim2.new(1, -32, 0, 10)
+					}})
+					--
+					local sliderInlineGradient = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(63, 63, 63),
+						BorderSizePixel = 0,
+						Parent = sliderFrame,
+						Position = UDim2.new(0, 1, 0, 1),
+						Size = UDim2.new(1, -2, 1, -2)
+					}})
+					--
+					local sliderGradient = utility:Create({Type = "UIGradient", Properties = {
+						Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}),
+						Rotation = 90,
+						Parent = sliderInlineGradient
+					}})
+					--
+					local sliderSlideHolder = utility:Create({Type = "Frame", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sliderFrame,
+						Position = UDim2.new(0, 1, 0, 1),
+						Size = UDim2.new(1, -2, 1, -2)
+					}})
+					--
+					local sliderSlide = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(170, 85, 235),
+						BorderSizePixel = 0,
+						Parent = sliderSlideHolder,
+						Position = UDim2.new(0, 0, 0, 0),
+						Size = UDim2.new(0.5, 0, 1, 0)
+					}})
+					--
+					local sliderGradient = utility:Create({Type = "UIGradient", Properties = {
+						Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}),
+						Rotation = 90,
+						Parent = sliderSlide
+					}})
+					--
+					local sliderValue = utility:Create({Type = "TextLabel", Properties = {
+						AnchorPoint = Vector2.new(0.5, 0.25),
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sliderSlide,
+						Size = UDim2.new(0, 10, 0, 14),
+						Position = UDim2.new(1, 0, 0.5, 0),
+						Font = "Code",
+						RichText = true,
+						Text = tostring(slider.state) .. tostring(slider.suffix),
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextStrokeTransparency = 0.5,
+						TextSize = 13,
+						TextXAlignment = "Left"
+					}})
+					-- // Functions / Connections
+					local connection = utility:Connection({Type = sliderButton.MouseButton1Down, Callback = function()
+						slider.holding = true
+						slider:Refresh()
+					end})
+					--
+					local connection2 = utility:Connection({Type = uis.InputChanged, Callback = function(input)
+						if slider.holding and input.UserInputType == Enum.UserInputType.MouseMovement then
+							slider:Refresh()
+						end
+					end})
+					--
+					local connection3 = utility:Connection({Type = uis.InputEnded, Callback = function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then
+							slider.holding = false
+						end
+					end})
+					-- // Nested Functions
+					function slider:Remove()
+						contentHolder:Remove()
+						slider = nil
+						--
+						utility:RemoveConnection({Connection = connection})
+						connection = nil
+						utility:RemoveConnection({Connection = connection2})
+						connection2 = nil
+						utility:RemoveConnection({Connection = connection3})
+						connection3 = nil
+						--
+						section:Update()
+					end
+					--
+					function slider:Get()
+						return slider.state
+					end
+					--
+					function slider:Set(value)
+						slider.state = math.clamp(math.round(value * slider.decimals) / slider.decimals, slider.min, slider.max)
+						sliderSlide.Size = UDim2.new(1 - ((slider.max - slider.state) / (slider.max - slider.min)), 0, 1, 0)
+						sliderValue.Text = tostring(slider.state) .. tostring(slider.suffix)
+						pcall(slider.callback, slider.state)
+					end
+					--
+					function slider:Refresh()
+						if slider.holding then
+							local mouseLocation = uis:GetMouseLocation()
+							slider:Set(math.clamp(math.floor((slider.min + (slider.max - slider.min) * (math.clamp(mouseLocation.X - sliderSlide.AbsolutePosition.X, 0, sliderSlideHolder.AbsoluteSize.X) / sliderSlideHolder.AbsoluteSize.X)) * slider.decimals) / slider.decimals, slider.min, slider.max))
+						end
+					end
+					-- // Returning + Other
+					section:Update()
+					slider:Set(slider.state)
+					--
+					return slider
+				end
+				-- // Returning + Other
+				return section
+			end
+			-- // Returning + Other
+			page.Tab = tab
+			page.PageHolder = pageHolder
+			page.Left = leftHolder
+			page.Right = rightHolder
+			--
+			window.Pages[#window.Pages + 1] = page
+			window:RefreshTabs()
+			--
+			return page
+		end
+		-- // Returning
+		return window
+	end
+end
+-- // Main
+local window = library:Window({name = "<font color=\"#AA55EB\">67 Hub</font> | Made by Duke"})
+--
+local aimbot = window:Page({Name = "Local Player"})
+local visuals = window:Page({Name = "Visuals"})
+local misc = window:Page({Name = "Misc"})
+--
+local aimbot_section = aimbot:Section({Name = "Movement", size = 140})
+local aimbot_section2 = aimbot:Section({Name = "Client", size = 120, Side = "Right"})
+--
+local flyToggle
+local flySlider
+
+flyToggle = aimbot_section:Toggle({
+	Name = "Fly",
+	Default = false,
+	Callback = function(val)
+		local player = game.Players.LocalPlayer
+		local run = game:GetService("RunService")
+		local uis = game:GetService("UserInputService")
+
+		-- cleanup any previous connections
+		if flyToggle._flyConnection then
+			flyToggle._flyConnection:Disconnect()
+			flyToggle._flyConnection = nil
+		end
+		if flyToggle._charConn then
+			flyToggle._charConn:Disconnect()
+			flyToggle._charConn = nil
+		end
+
+		local function getCharParts()
+			local character = player.Character
+			if not character then return nil end
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local root = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+			return character, humanoid, root
+		end
+
+		if val then
+			local character, humanoid, root = getCharParts()
+			if not character then
+				-- if character not present, wait for it and then continue
+				character = player.CharacterAdded:Wait()
+				humanoid = character:WaitForChild("Humanoid")
+				root = character:WaitForChild("HumanoidRootPart")
+			end
+			-- ensure humanoid exists
+			humanoid = humanoid or character:FindFirstChildOfClass("Humanoid")
+			root = root or character:FindFirstChild("HumanoidRootPart")
+
+			-- flight update every frame
+			flyToggle._flyConnection = run.Heartbeat:Connect(function()
+				local character, humanoid, root = getCharParts()
+				if not character or not root then return end
+
+				local cam = workspace.CurrentCamera
+				if not cam then return end
+
+				local speed = (flySlider and flySlider:Get()) or 50
+				local moveVec = Vector3.new()
+
+				-- WASD relative to camera (forward includes camera Y so looking up moves up)
+				if uis:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + cam.CFrame.LookVector end
+				if uis:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec - cam.CFrame.LookVector end
+				if uis:IsKeyDown(Enum.KeyCode.A) then moveVec = moveVec - cam.CFrame.RightVector end
+				if uis:IsKeyDown(Enum.KeyCode.D) then moveVec = moveVec + cam.CFrame.RightVector end
+
+				-- explicit vertical controls: Space = up, LeftControl/C = down
+				if uis:IsKeyDown(Enum.KeyCode.Space) then moveVec = moveVec + Vector3.new(0, 1, 0) end
+				if uis:IsKeyDown(Enum.KeyCode.LeftControl) or uis:IsKeyDown(Enum.KeyCode.C) then moveVec = moveVec - Vector3.new(0, 1, 0) end
+
+				local desiredVel = Vector3.new(0, 0, 0)
+				if moveVec.Magnitude > 0 then
+					desiredVel = moveVec.Unit * speed
+				else
+					-- when idle in flight, apply a small downward velocity so humanoid thinks it's falling
+					-- compute a much slower fall based on fly speed so the fall feels smoother; use a smaller multiplier
+					if moveVec.Magnitude > 0 then
+						desiredVel = moveVec.Unit * speed
+					else
+						local slowFall = -math.clamp(speed * 0.02, 0.1, 4) -- smaller factor => much slower descent
+						desiredVel = Vector3.new(0, slowFall, 0)
+					end
+
+					-- smooth velocity changes to avoid abrupt drops/jerks
+					local success, currentVel = pcall(function() return root.AssemblyLinearVelocity end)
+					currentVel = (success and currentVel) or Vector3.new(0, 0, 0)
+					local smoothed = currentVel:Lerp(desiredVel, 0.12)
+
+				end
+
+				-- apply velocity; use AssemblyLinearVelocity if available for smoother physics
+				pcall(function()
+					root.AssemblyLinearVelocity = smoothed or desiredVel
+				end)
+
+				-- force humanoid into a falling/freefall state so animations play (don't set PlatformStand)
+				if humanoid and humanoid.Health > 0 then
+					pcall(function()
+						humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+					end)
+				end
+			end)
+
+			-- if player respawns, reapply necessary state for animation continuity
+			flyToggle._charConn = player.CharacterAdded:Connect(function(char)
+				local hum = char:WaitForChild("Humanoid", 5)
+				local rt = char:WaitForChild("HumanoidRootPart", 5)
+				-- small delay to let the new character settle, then nudge state so falling animation can play
+				if hum then
+					pcall(function()
+						hum:ChangeState(Enum.HumanoidStateType.Freefall)
+					end)
+				end
+			end)
+		else
+			-- turning off fly: stop flight updates first, then restore humanoid and cleanup
+			if flyToggle._flyConnection then
+				flyToggle._flyConnection:Disconnect()
+				flyToggle._flyConnection = nil
+			end
+			if flyToggle._charConn then
+				flyToggle._charConn:Disconnect()
+				flyToggle._charConn = nil
+			end
+
+			local _, humanoid, root = getCharParts()
+
+			-- zero out velocity first
+			if root then
+				pcall(function()
+					root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+				end)
+			end
+
+			-- restore humanoid state so normal animations resume
+			if humanoid then
+				pcall(function()
+					-- clear platform stand / seated flags just in case
+					humanoid.PlatformStand = false
+					humanoid.Sit = false
+					-- nudge into landed/running states to resume idle/run animations
+					humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+					humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+				end)
+			end
+		end
+	end
+})
+
+
+-- declare these so closures will capture them
+local speedToggle
+local speedSlider
+
+speedToggle = aimbot_section:Toggle({
+	Name = "Speed",
+	Default = false,
+	Callback = function(val)
+		local player = game.Players.LocalPlayer
+		local character = player.Character or player.CharacterAdded:Wait()
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			if val then
+				-- when enabling the speed toggle, set walk speed to current slider value (or default 16)
+				local newSpeed = (speedSlider and speedSlider:Get()) or 16
+				humanoid.WalkSpeed = newSpeed
+			else
+				-- when disabling, reset to default walkspeed
+				humanoid.WalkSpeed = 16
+			end
+		end
+	end
+})
+
+local toggle = aimbot_section:Toggle({
+	Name = "Noclip",
+	Default = false,
+	Callback = function(val)
+		local player = game.Players.LocalPlayer
+		local character = player.Character or player.CharacterAdded:Wait()
+		local noclipConnection
+
+		-- Helper to set CanCollide for all parts in character
+		local function setNoclip(enabled)
+			for _, part in ipairs(character:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = not enabled
+				end
+			end
+		end
+
+		if val then
+			setNoclip(true)
+			-- Update CanCollide every frame in case new parts are added
+			noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+				setNoclip(true)
+			end)
+			toggle._noclipConnection = noclipConnection
+		else
+			setNoclip(false)
+			if toggle._noclipConnection then
+				toggle._noclipConnection:Disconnect()
+				toggle._noclipConnection = nil
+			end
+		end
+	end
+})
+
+flySlider = aimbot_section:Slider({
+	Name = "Fly slider",
+	Default = 50,
+	Minimum = 1,
+	Maximum = 500,
+	Decimals = 1,
+	Callback = function(val)
+		-- only do something when fly toggle is enabled (mirrors speed slider behavior)
+		if flyToggle and flyToggle:Get() then
+			warn("Fly speed:", val)
+		end
+	end
+})
+
+speedSlider = aimbot_section:Slider({
+	Name = "Speed slider",
+	Default = 16,
+	Minimum = 1,
+	Maximum = 500,
+	Decimals = 1,
+	Callback = function(val)
+		local player = game.Players.LocalPlayer
+		local character = player.Character or player.CharacterAdded:Wait()
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		-- only apply slider changes when the speed toggle is enabled
+		if humanoid and speedToggle and speedToggle:Get() then
+			humanoid.WalkSpeed = val
+		end
+	end
+})
+
+local toggle = aimbot_section2:Toggle({
+	Name = "Player Proximity",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local RunService = game:GetService("RunService")
+		local localPlayer = Players.LocalPlayer
+		if not localPlayer then return end
+
+		-- enable
+		if val then
+			-- create GUI if missing
+			if not toggle._gui then
+				local screen = Instance.new("ScreenGui")
+				screen.Name = "ProximityGui"
+				screen.ResetOnSpawn = false
+				screen.Parent = localPlayer:WaitForChild("PlayerGui")
+
+				local label = Instance.new("TextLabel")
+				label.Name = "ProximityLabel"
+				label.BackgroundTransparency = 1
+				label.BorderSizePixel = 0
+				label.Size = UDim2.new(1, 0, 0, 30)
+				label.Position = UDim2.new(0, 0, 0, 300)
+				label.Font = Enum.Font.Code
+				label.TextSize = 25
+				label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				label.TextStrokeTransparency = 0.5
+				label.Text = ""
+				label.RichText = false
+				label.Parent = screen
+
+				toggle._gui = screen
+			end
+
+			-- ensure any previous connection is cleared
+			if toggle._conn then
+				toggle._conn:Disconnect()
+				toggle._conn = nil
+			end
+
+			-- update nearest player every Heartbeat
+			toggle._conn = RunService.Heartbeat:Connect(function()
+				pcall(function()
+					local char = localPlayer.Character
+					local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
+					if not root or not toggle._gui then
+						if toggle._gui and toggle._gui:FindFirstChild("ProximityLabel") then
+							toggle._gui.ProximityLabel.Text = ""
+						end
+						return
+					end
+
+					local nearestName = nil
+					local nearestDist = nil
+
+					for _, pl in ipairs(Players:GetPlayers()) do
+						if pl ~= localPlayer and pl.Character and pl.Character.Parent then
+							local otherRoot = pl.Character:FindFirstChild("HumanoidRootPart") or pl.Character:FindFirstChild("Torso") or pl.Character:FindFirstChild("UpperTorso")
+							if otherRoot then
+								local dist = (otherRoot.Position - root.Position).Magnitude
+								if not nearestDist or dist < nearestDist then
+									nearestDist = dist
+									nearestName = pl.Name
+								end
+							end
+						end
+					end
+
+					-- only display if nearest player is within 500 studs
+					if nearestName and nearestDist and nearestDist <= 500 then
+						if toggle._gui and toggle._gui:FindFirstChild("ProximityLabel") then
+							toggle._gui.ProximityLabel.Text = string.format("(%s) is near (%.1f studs)", nearestName, nearestDist)
+						end
+					else
+						if toggle._gui and toggle._gui:FindFirstChild("ProximityLabel") then
+							toggle._gui.ProximityLabel.Text = ""
+						end
+					end
+				end)
+			end)
+		-- disable
+		else
+			if toggle._conn then
+				toggle._conn:Disconnect()
+				toggle._conn = nil
+			end
+			if toggle._gui then
+				pcall(function() toggle._gui:Destroy() end)
+				toggle._gui = nil
+			end
+		end
+	end
+})
+local toggle = aimbot_section2:Toggle({
+	Name = "No fog",
+	Default = false,
+	Callback = function(val)
+		local Lighting = game:GetService("Lighting")
+		-- enable: backup current fog settings and remove fog; keep enforced while enabled
+		if val then
+			-- backup once
+			if not toggle._backup then
+				toggle._backup = {
+					FogEnd = Lighting.FogEnd,
+					FogStart = Lighting.FogStart
+				}
+				-- also backup Atmosphere density if present
+				local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+				if atm then
+					toggle._backup.AtmosphereDensity = atm.Density
+				end
+			end
+
+			-- function to remove fog
+			local function removeFog()
+				pcall(function()
+					Lighting.FogEnd = 1e8
+					Lighting.FogStart = 0
+					local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+					if atm then
+						atm.Density = 0
+					end
+				end)
+			end
+
+			removeFog()
+			-- enforce no-fog if something else changes Lighting
+			if not toggle._fogConnection then
+				toggle._fogConnection = Lighting.Changed:Connect(function(prop)
+					if prop == "FogEnd" or prop == "FogStart" then
+						removeFog()
+					end
+				end)
+			end
+		else
+			-- disable: disconnect enforcer and restore backups
+			if toggle._fogConnection then
+				toggle._fogConnection:Disconnect()
+				toggle._fogConnection = nil
+			end
+			if toggle._backup then
+				pcall(function()
+					Lighting.FogEnd = toggle._backup.FogEnd
+					Lighting.FogStart = toggle._backup.FogStart
+					local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+					if atm and toggle._backup.AtmosphereDensity ~= nil then
+						atm.Density = toggle._backup.AtmosphereDensity
+					end
+				end)
+				toggle._backup = nil
+			end
+		end
+	end
+})
+local toggle = aimbot_section2:Toggle({
+	Name = "Fullbright",
+	Default = false,
+	Callback = function(val)
+		local Lighting = game:GetService("Lighting")
+		local Workspace = game:GetService("Workspace")
+		local RunService = game:GetService("RunService")
+
+		-- helper to safely check and set CastShadow
+		local function hasCastShadow(inst)
+			local ok, exists = pcall(function() return inst.CastShadow ~= nil end)
+			return ok and exists
+		end
+
+		if val then
+			-- backup lighting and parts once
+			if not toggle._backup then
+				toggle._backup = {
+					GlobalShadows = Lighting.GlobalShadows,
+					Brightness = Lighting.Brightness,
+					Ambient = Lighting.Ambient,
+					OutdoorAmbient = Lighting.OutdoorAmbient,
+					FogStart = Lighting.FogStart,
+					FogEnd = Lighting.FogEnd
+				}
+				toggle._partBackups = {}
+
+				for _, inst in ipairs(Workspace:GetDescendants()) do
+					if inst:IsA("BasePart") and hasCastShadow(inst) then
+						table.insert(toggle._partBackups, {inst = inst, CastShadow = inst.CastShadow})
+						pcall(function() inst.CastShadow = false end)
+					end
+				end
+			end
+
+			-- function to apply fullbright / remove shadows
+			local function applyFullbright()
+				pcall(function()
+					Lighting.GlobalShadows = false
+					Lighting.Brightness = 2
+					Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+					-- OutdoorAmbient can be absent in some games; protect with pcall
+					Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+					Lighting.FogStart = 0
+					Lighting.FogEnd = 1e8
+				end)
+
+				-- ensure parts do not cast shadows
+				for _, entry in ipairs(toggle._partBackups or {}) do
+					local p = entry.inst
+					if p and p.Parent then
+						pcall(function() if hasCastShadow(p) then p.CastShadow = false end end)
+					end
+				end
+			end
+
+			applyFullbright()
+
+			-- enforce changes if Lighting gets modified
+			if not toggle._lightingConn then
+				toggle._lightingConn = Lighting.Changed:Connect(function(prop)
+					if prop == "GlobalShadows" or prop == "Brightness" or prop == "Ambient" or prop == "OutdoorAmbient" or prop == "FogStart" or prop == "FogEnd" then
+						applyFullbright()
+					end
+				end)
+			end
+
+			-- handle new parts added after enabling
+			if not toggle._descConn then
+				toggle._descConn = Workspace.DescendantAdded:Connect(function(obj)
+					if obj:IsA("BasePart") and hasCastShadow(obj) then
+						table.insert(toggle._partBackups, {inst = obj, CastShadow = obj.CastShadow})
+						pcall(function() obj.CastShadow = false end)
+					elseif obj:IsA("Atmosphere") then
+						pcall(function() obj.Density = 0 end)
+					end
+				end)
+			end
+
+			-- periodic enforcement (in case some scripts fight these properties)
+			if not toggle._stepConn then
+				toggle._stepConn = RunService.Stepped:Connect(function()
+					applyFullbright()
+				end)
+			end
+		else
+			-- disconnect enforcers
+			if toggle._lightingConn then toggle._lightingConn:Disconnect() toggle._lightingConn = nil end
+			if toggle._descConn then toggle._descConn:Disconnect() toggle._descConn = nil end
+			if toggle._stepConn then toggle._stepConn:Disconnect() toggle._stepConn = nil end
+
+			-- restore parts' CastShadow
+			if toggle._partBackups then
+				for _, entry in ipairs(toggle._partBackups) do
+					local p = entry.inst
+					if p and p.Parent and hasCastShadow(p) then
+						pcall(function() p.CastShadow = entry.CastShadow end)
+					end
+				end
+				toggle._partBackups = nil
+			end
+
+			-- restore lighting settings
+			if toggle._backup then
+				pcall(function()
+					Lighting.GlobalShadows = toggle._backup.GlobalShadows
+					Lighting.Brightness = toggle._backup.Brightness
+					Lighting.Ambient = toggle._backup.Ambient
+					Lighting.OutdoorAmbient = toggle._backup.OutdoorAmbient
+					Lighting.FogStart = toggle._backup.FogStart
+					Lighting.FogEnd = toggle._backup.FogEnd
+				end)
+				toggle._backup = nil
+			end
+		end
+	end
+})
+local fovToggle
+local fovSlider
+
+fovToggle = aimbot_section2:Toggle({
+	Name = "Fov Changer",
+	Default = false,
+	Callback = function(val)
+		local RunService = game:GetService("RunService")
+		local function getCamera() return workspace and workspace.CurrentCamera end
+
+		-- cleanup previous enforcer
+		if fovToggle._conn then
+			fovToggle._conn:Disconnect()
+			fovToggle._conn = nil
+		end
+
+		if val then
+			local cam = getCamera()
+			-- backup once
+			if cam and not fovToggle._backup then
+				fovToggle._backup = cam.FieldOfView
+			end
+
+			-- apply immediately
+			local target = (fovSlider and fovSlider:Get()) or 70
+			if cam then pcall(function() cam.FieldOfView = target end) end
+
+			-- enforce FOV each render step (camera objects can change)
+			fovToggle._conn = RunService.RenderStepped:Connect(function()
+				local c = getCamera()
+				if c then
+					local desired = (fovSlider and fovSlider:Get()) or target
+					-- only write when needed to avoid churn
+					if c.FieldOfView ~= desired then
+						pcall(function() c.FieldOfView = desired end)
+					end
+				end
+			end)
+		else
+			-- disable: restore backup and cleanup
+			if fovToggle._conn then
+				fovToggle._conn:Disconnect()
+				fovToggle._conn = nil
+			end
+			local cam = getCamera()
+			if cam and fovToggle._backup then
+				pcall(function() cam.FieldOfView = fovToggle._backup end)
+			end
+			fovToggle._backup = nil
+		end
+	end
+})
+
+fovSlider = aimbot_section2:Slider({
+	Default = 70,
+	Minimum = 10,
+	Maximum = 120,
+	Decimals = 1,
+	Callback = function(val)
+		-- if toggle is enabled, apply new value immediately
+		if fovToggle and fovToggle:Get() then
+			local cam = workspace and workspace.CurrentCamera
+			if cam then pcall(function() cam.FieldOfView = val end) end
+		end
+	end
+})
+
+local visuals_section = visuals:Section({Name = "Esp", size = 120})
+local toggle = visuals_section:Toggle({
+	Name = "Esp Boxes",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local RunService = game:GetService("RunService")
+		local localPlayer = Players.LocalPlayer
+		local cam = workspace and workspace.CurrentCamera
+
+		-- cleanup helper
+		local function cleanup()
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
+			end
+			if toggle._playersConn then
+				pcall(function() toggle._playersConn:Disconnect() end)
+				toggle._playersConn = nil
+			end
+			if toggle._gui then
+				pcall(function() toggle._gui:Destroy() end)
+				toggle._gui = nil
+			end
+			if toggle._boxes then
+				for _, b in pairs(toggle._boxes) do
+					pcall(function() b:Destroy() end)
+				end
+				toggle._boxes = nil
+			end
+			if toggle._labels then
+				for _, l in pairs(toggle._labels) do
+					pcall(function() l:Destroy() end)
+				end
+				toggle._labels = nil
+			end
+			if toggle._diedConns then
+				for _, c in pairs(toggle._diedConns) do
+					pcall(function() c:Disconnect() end)
+				end
+				toggle._diedConns = nil
+			end
+		end
+
+		if val then
+			-- ensure tables
+			toggle._boxes = toggle._boxes or {}
+			toggle._labels = toggle._labels or {}
+			toggle._diedConns = toggle._diedConns or {}
+
+			-- create parent gui in LocalPlayer.PlayerGui so it renders as a top-level HUD
+			if not toggle._gui then
+				local screen = Instance.new("ScreenGui")
+				screen.Name = "ESP_Boxes"
+				screen.ResetOnSpawn = false
+				screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
+				screen.IgnoreGuiInset = true
+				screen.DisplayOrder = 9999
+				screen.Parent = (localPlayer and localPlayer:FindFirstChild("PlayerGui")) or game:GetService("CoreGui")
+				toggle._gui = screen
+			end
+
+			-- ensure any previous player-removal connection is cleared, then watch for players leaving
+			if toggle._playersConn then
+				pcall(function() toggle._playersConn:Disconnect() end)
+				toggle._playersConn = nil
+			end
+			toggle._playersConn = Players.PlayerRemoving:Connect(function(pl)
+				-- destroy any lingering UI for the player who left
+				if toggle._boxes and toggle._boxes[pl] then
+					pcall(function() toggle._boxes[pl]:Destroy() end)
+					toggle._boxes[pl] = nil
+				end
+				if toggle._labels and toggle._labels[pl] then
+					pcall(function() toggle._labels[pl]:Destroy() end)
+					toggle._labels[pl] = nil
+				end
+				-- disconnect died connection for that player if present
+				if toggle._diedConns and toggle._diedConns[pl] then
+					pcall(function() toggle._diedConns[pl]:Disconnect() end)
+					toggle._diedConns[pl] = nil
+				end
+			end)
+
+			-- update every frame (use RenderStepped for accurate projection)
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
+			end
+
+			toggle._conn = RunService.RenderStepped:Connect(function()
+				local camera = workspace and workspace.CurrentCamera
+				if not camera then return end
+				local viewport = camera.ViewportSize
+				local screenW, screenH = viewport.X, viewport.Y
+
+				for _, pl in ipairs(Players:GetPlayers()) do
+					if pl ~= localPlayer and pl.Character and pl.Character.Parent then
+						local character = pl.Character
+						local minX, minY = math.huge, math.huge
+						local maxX, maxY = -math.huge, -math.huge
+						local anyOnScreen = false
+						local anyProjected = false
+
+						-- For each BasePart, project its 8 bounding-corners (more accurate than part.Position)
+						for _, part in ipairs(character:GetDescendants()) do
+							if part:IsA("BasePart") then
+								local size = part.Size
+								local cf = part.CFrame
+								local hx, hy, hz = size.X / 2, size.Y / 2, size.Z / 2
+
+								-- iterate corners
+								for ix = -1, 1, 2 do
+									for iy = -1, 1, 2 do
+										for iz = -1, 1, 2 do
+											local localCorner = Vector3.new(hx * ix, hy * iy, hz * iz)
+											local worldPoint = (cf * CFrame.new(localCorner)).p
+											local success, screenPos, onScreen = pcall(function()
+												return camera:WorldToViewportPoint(worldPoint)
+											end)
+											if success and screenPos then
+												anyProjected = true
+												-- screenPos is Vector3 where X,Y are pixel coordinates and Z is depth
+												local sx = screenPos.X
+												local sy = screenPos.Y
+												-- sometimes projection returns NaN/inf; guard against that
+												if sx == sx and sy == sy then
+													minX = math.min(minX, sx)
+													minY = math.min(minY, sy)
+													maxX = math.max(maxX, sx)
+													maxY = math.max(maxY, sy)
+												end
+												if onScreen then
+													anyOnScreen = true
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+
+						-- DON'T draw boxes for dead humanoids. Remove any existing UI immediately on death.
+						local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+						if humanoid and humanoid.Health <= 0 then
+							if toggle._boxes and toggle._boxes[pl] then
+								pcall(function() toggle._boxes[pl]:Destroy() end)
+								toggle._boxes[pl] = nil
+							end
+							if toggle._labels and toggle._labels[pl] then
+								pcall(function() toggle._labels[pl]:Destroy() end)
+								toggle._labels[pl] = nil
+							end
+							-- we can also attach a CharacterAdded handler elsewhere; skip drawing this frame
+						else
+							-- attach a died listener to fully remove UI when player dies (prevents weird expansion)
+							if humanoid and not (toggle._diedConns and toggle._diedConns[pl]) then
+								toggle._diedConns = toggle._diedConns or {}
+								toggle._diedConns[pl] = humanoid.Died:Connect(function()
+									-- remove box and label immediately when they die
+									if toggle._boxes and toggle._boxes[pl] then
+										pcall(function() toggle._boxes[pl]:Destroy() end)
+										toggle._boxes[pl] = nil
+									end
+									if toggle._labels and toggle._labels[pl] then
+										pcall(function() toggle._labels[pl]:Destroy() end)
+										toggle._labels[pl] = nil
+									end
+									-- disconnect and clear this died connection
+									if toggle._diedConns and toggle._diedConns[pl] then
+										pcall(function() toggle._diedConns[pl]:Disconnect() end)
+										toggle._diedConns[pl] = nil
+									end
+								end)
+							end
+
+							-- Only draw when we successfully projected something, there is area AND at least one corner is on-screen
+							if anyProjected and anyOnScreen and minX < maxX and minY < maxY then
+								-- smaller padding in pixels so boxes are tighter around players
+								local pad = 6
+
+								-- clamp coordinates to viewport so box stays onscreen when partially offscreen
+								local px = math.clamp(math.floor(minX - pad), 0, screenW)
+								local py = math.clamp(math.floor(minY - pad), 0, screenH)
+								local rx = math.clamp(math.ceil(maxX + pad), 0, screenW)
+								local ry = math.clamp(math.ceil(maxY + pad), 0, screenH)
+								local w = math.max(1, rx - px)
+								local h = math.max(1, ry - py)
+
+								-- make boxes just a bit smaller than the full bounds to avoid being too large
+								w = math.max(1, w - 4)
+								h = math.max(1, h - 4)
+
+								local box = toggle._boxes[pl]
+								if not box or not box.Parent then
+									-- Frame parented to the ScreenGui
+									box = Instance.new("Frame")
+									box.Name = pl.Name .. "_esp_box"
+									box.BackgroundTransparency = 1
+									box.ClipsDescendants = false
+									box.Parent = toggle._gui
+
+									-- UIStroke for visible outline
+									local stroke = Instance.new("UIStroke")
+									stroke.Name = "ESPStroke"
+									stroke.Color = Color3.fromRGB(170, 85, 235)
+									stroke.Thickness = 2
+									stroke.LineJoinMode = Enum.LineJoinMode.Round
+									stroke.Parent = box
+
+									-- keep reference
+									toggle._boxes[pl] = box
+								end
+
+								-- set position/size (use pixels)
+								box.Position = UDim2.new(0, px + 2, 0, py + 2)
+								box.Size = UDim2.new(0, w, 0, h)
+								box.Visible = true
+
+								-- create or update label above box with white text and black outline
+								local label = toggle._labels[pl]
+								local centerX = px + (w / 2)
+								local labelY = py - 4 -- a little above the box
+								if not label or not label.Parent then
+									label = Instance.new("TextLabel")
+									label.Name = pl.Name .. "_esp_label"
+									label.BackgroundTransparency = 1
+									label.BorderSizePixel = 0
+									label.Font = Enum.Font.Code
+									label.TextSize = 14
+									label.RichText = false
+									label.TextColor3 = Color3.fromRGB(255,255,255)
+									label.TextStrokeColor3 = Color3.fromRGB(0,0,0) -- black outline
+									label.TextStrokeTransparency = 0 -- fully visible stroke
+									label.TextXAlignment = Enum.TextXAlignment.Center
+									label.TextYAlignment = Enum.TextYAlignment.Center
+									label.AnchorPoint = Vector2.new(0.5, 1) -- center horizontally, align bottom to position.y
+									label.Parent = toggle._gui
+
+									-- keep reference
+									toggle._labels[pl] = label
+								end
+
+								-- choose width to fit name but not exceed box width + some padding
+								local nameWidth = math.max(40, #pl.Name * 7) -- rough estimation of text width
+								local labelW = math.min(w + 20, nameWidth + 10)
+								label.Size = UDim2.new(0, labelW, 0, 16)
+								label.Position = UDim2.new(0, centerX, 0, labelY)
+								label.Text = pl.Name
+								label.Visible = true
+							else
+								-- not visible: remove existing box and label
+								if toggle._boxes and toggle._boxes[pl] then
+									pcall(function() toggle._boxes[pl]:Destroy() end)
+									toggle._boxes[pl] = nil
+								end
+								if toggle._labels and toggle._labels[pl] then
+									pcall(function() toggle._labels[pl]:Destroy() end)
+									toggle._labels[pl] = nil
+								end
+							end
+						end
+					else
+						-- player is local or no character: remove any existing box/label
+						if toggle._boxes and toggle._boxes[pl] then
+							pcall(function() toggle._boxes[pl]:Destroy() end)
+							toggle._boxes[pl] = nil
+						end
+						if toggle._labels and toggle._labels[pl] then
+							pcall(function() toggle._labels[pl]:Destroy() end)
+							toggle._labels[pl] = nil
+						end
+					end
+				end
+			end)
+		else
+			-- disable: remove everything
+			cleanup()
+		end
+	end
+})
+local toggle = visuals_section:Toggle({Name = "Esp Tracer", Default = false, Callback = function(val)
+	local Players = game:GetService("Players")
+	local RunService = game:GetService("RunService")
+	local localPlayer = Players.LocalPlayer
+
+	-- cleanup helper
+	local function cleanup(t)
+		if t._conn then
+			pcall(function() t._conn:Disconnect() end)
+			t._conn = nil
+		end
+		if t._playersConn then
+			pcall(function() t._playersConn:Disconnect() end)
+			t._playersConn = nil
+		end
+		if t._gui then
+			pcall(function() t._gui:Destroy() end)
+			t._gui = nil
+		end
+		if t._tracers then
+			for _, tr in pairs(t._tracers) do
+				pcall(function() tr:Destroy() end)
+			end
+			t._tracers = nil
+		end
+		-- disconnect any per-player died connections
+		if t._diedConns then
+			for _, c in pairs(t._diedConns) do
+				pcall(function() c:Disconnect() end)
+			end
+			t._diedConns = nil
+		end
+	end
+
+	if val then
+		toggle._tracers = toggle._tracers or {}
+		toggle._diedConns = toggle._diedConns or {}
+
+		if not toggle._gui then
+			local screen = Instance.new("ScreenGui")
+			screen.Name = "ESP_Tracers"
+			screen.ResetOnSpawn = false
+			screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
+			screen.IgnoreGuiInset = true
+			screen.DisplayOrder = 9999
+			screen.Parent = (localPlayer and localPlayer:FindFirstChild("PlayerGui")) or game:GetService("CoreGui")
+			toggle._gui = screen
+		end
+
+		if toggle._playersConn then
+			pcall(function() toggle._playersConn:Disconnect() end)
+			toggle._playersConn = nil
+		end
+		toggle._playersConn = Players.PlayerRemoving:Connect(function(pl)
+			-- destroy any tracer for player who left
+			if toggle._tracers and toggle._tracers[pl] then
+				pcall(function() toggle._tracers[pl]:Destroy() end)
+				toggle._tracers[pl] = nil
+			end
+			-- disconnect and clear a died connection if present
+			if toggle._diedConns and toggle._diedConns[pl] then
+				pcall(function() toggle._diedConns[pl]:Disconnect() end)
+				toggle._diedConns[pl] = nil
+			end
+		end)
+
+		if toggle._conn then
+			pcall(function() toggle._conn:Disconnect() end)
+			toggle._conn = nil
+		end
+
+		-- RenderStepped for accurate projection
+		toggle._conn = RunService.RenderStepped:Connect(function()
+			local camera = workspace and workspace.CurrentCamera
+			if not camera then return end
+			local viewport = camera.ViewportSize
+			local screenW, screenH = viewport.X, viewport.Y
+			local startPoint = Vector2.new(screenW / 2, screenH) -- bottom center of screen
+
+			for _, pl in ipairs(Players:GetPlayers()) do
+				if pl ~= localPlayer and pl.Character and pl.Character.Parent then
+					local character = pl.Character
+					local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+					-- remove tracer immediately if the humanoid is dead
+					if humanoid and humanoid.Health <= 0 then
+						if toggle._tracers and toggle._tracers[pl] then
+							pcall(function() toggle._tracers[pl]:Destroy() end)
+							toggle._tracers[pl] = nil
+						end
+						if toggle._diedConns and toggle._diedConns[pl] then
+							pcall(function() toggle._diedConns[pl]:Disconnect() end)
+							toggle._diedConns[pl] = nil
+						end
+						-- skip further processing for this player
+						continue
+					end
+
+					local minX, minY = math.huge, math.huge
+					local maxX, maxY = -math.huge, -math.huge
+					local anyOnScreen = false
+					local anyProjected = false
+
+					-- project bounding corners like the box esp to get accurate bottom-center
+					for _, part in ipairs(character:GetDescendants()) do
+						if part:IsA("BasePart") then
+							local size = part.Size
+							local cf = part.CFrame
+							local hx, hy, hz = size.X / 2, size.Y / 2, size.Z / 2
+							for ix = -1, 1, 2 do
+								for iy = -1, 1, 2 do
+									for iz = -1, 1, 2 do
+										local localCorner = Vector3.new(hx * ix, hy * iy, hz * iz)
+										local worldPoint = (cf * CFrame.new(localCorner)).p
+										local success, screenPos, onScreen = pcall(function()
+											return camera:WorldToViewportPoint(worldPoint)
+										end)
+										if success and screenPos then
+											anyProjected = true
+											local sx = screenPos.X
+											local sy = screenPos.Y
+											if sx == sx and sy == sy then
+												minX = math.min(minX, sx)
+												minY = math.min(minY, sy)
+												maxX = math.max(maxX, sx)
+												maxY = math.max(maxY, sy)
+											end
+											if onScreen then anyOnScreen = true end
+										end
+									end
+								end
+							end
+						end
+					end
+
+					local endPos = nil
+					if anyProjected and minX < maxX and minY < maxY then
+						local pad = 6
+						local px = math.clamp(math.floor(minX - pad), 0, screenW)
+						local py = math.clamp(math.floor(minY - pad), 0, screenH)
+						local rx = math.clamp(math.ceil(maxX + pad), 0, screenW)
+						local ry = math.clamp(math.ceil(maxY + pad), 0, screenH)
+						local w = math.max(1, rx - px)
+						local h = math.max(1, ry - py)
+
+						w = math.max(1, w - 4)
+						h = math.max(1, h - 4)
+
+						local centerX = px + (w / 2)
+						local bottomY = py + h
+						endPos = Vector2.new(centerX, bottomY)
+					else
+						-- fallback: project HumanoidRootPart but only if it's actually on-screen (prevents floating bars in sky)
+						local root = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+						if root then
+							local ok, screenPos, onScreen = pcall(function()
+								return camera:WorldToViewportPoint(root.Position)
+							end)
+							-- require onScreen and positive depth to avoid off-screen/behind-camera projections
+							if ok and screenPos and screenPos.X == screenPos.X and screenPos.Y == screenPos.Y and onScreen and screenPos.Z > 0 then
+								endPos = Vector2.new(screenPos.X, screenPos.Y)
+								anyOnScreen = true
+							end
+						end
+					end
+
+					-- attach a died listener if humanoid exists and no listener yet
+					if humanoid and not (toggle._diedConns and toggle._diedConns[pl]) then
+						toggle._diedConns = toggle._diedConns or {}
+						toggle._diedConns[pl] = humanoid.Died:Connect(function()
+							if toggle._tracers and toggle._tracers[pl] then
+								pcall(function() toggle._tracers[pl]:Destroy() end)
+								toggle._tracers[pl] = nil
+							end
+							if toggle._diedConns and toggle._diedConns[pl] then
+								pcall(function() toggle._diedConns[pl]:Disconnect() end)
+								toggle._diedConns[pl] = nil
+							end
+						end)
+					end
+
+					local tracer = toggle._tracers[pl]
+					-- only draw tracer when target has a valid on-screen projection
+					if endPos and anyOnScreen then
+						if not tracer or not tracer.Parent then
+							tracer = Instance.new("ImageLabel")
+							tracer.Name = pl.Name .. "_esp_tracer"
+							tracer.BackgroundTransparency = 0
+							tracer.BorderSizePixel = 0
+							tracer.Image = "" -- use BackgroundColor3 as solid line
+							tracer.BackgroundColor3 = Color3.fromRGB(170, 85, 235)
+							tracer.AnchorPoint = Vector2.new(0.5, 0.5)
+							tracer.Parent = toggle._gui
+							tracer.ZIndex = 9999
+							toggle._tracers[pl] = tracer
+						end
+
+						local dir = endPos - startPoint
+						local len = dir.Magnitude
+						if len < 1 then len = 1 end
+						local mid = startPoint + dir * 0.5
+						tracer.Size = UDim2.new(0, len, 0, 2)
+						tracer.Position = UDim2.new(0, mid.X, 0, mid.Y)
+						tracer.Rotation = math.deg(math.atan2(dir.Y, dir.X))
+						tracer.Visible = true
+					else
+						-- if not looking at the player (no on-screen projection) remove tracer to avoid artifacts
+						if tracer and tracer.Parent then
+							pcall(function() tracer:Destroy() end)
+							if toggle._tracers then toggle._tracers[pl] = nil end
+						end
+					end
+				else
+					if toggle._tracers and toggle._tracers[pl] then
+						pcall(function() toggle._tracers[pl]:Destroy() end)
+						toggle._tracers[pl] = nil
+					end
+					-- also clean up any died connection for players without character
+					if toggle._diedConns and toggle._diedConns[pl] then
+						pcall(function() toggle._diedConns[pl]:Disconnect() end)
+						toggle._diedConns[pl] = nil
+					end
+				end
+			end
+		end)
+	else
+		cleanup(toggle)
+	end
+end})
+local toggle = visuals_section:Toggle({
+	Name = "Esp Healthbar",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local RunService = game:GetService("RunService")
+		local localPlayer = Players.LocalPlayer
+
+		-- helper: detect whether "Self Esp" GUI is present (either PlayerGui or CoreGui)
+		local function isSelfEspOn()
+			local ok, res = pcall(function()
+				local pg = localPlayer and localPlayer:FindFirstChild("PlayerGui")
+				if pg and pg:FindFirstChild("Self_ESP") then return true end
+				if game:GetService("CoreGui"):FindFirstChild("Self_ESP") then return true end
+				return false
+			end)
+			return ok and res
+		end
+
+		-- cleanup helper
+		local function cleanup()
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
+			end
+			if toggle._playersConn then
+				pcall(function() toggle._playersConn:Disconnect() end)
+				toggle._playersConn = nil
+			end
+			if toggle._gui then
+				pcall(function() toggle._gui:Destroy() end)
+				toggle._gui = nil
+			end
+			if toggle._bars then
+				for _, b in pairs(toggle._bars) do
+					if b.diedConn then
+						pcall(function() b.diedConn:Disconnect() end)
+					end
+					pcall(function() b.outer:Destroy() end)
+				end
+				toggle._bars = nil
+			end
+		end
+
+		if val then
+			toggle._bars = toggle._bars or {}
+
+			-- GUI parent (prefer PlayerGui)
+			if not toggle._gui then
+				local screen = Instance.new("ScreenGui")
+				screen.Name = "ESP_Healthbars"
+				screen.ResetOnSpawn = false
+				screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
+				screen.IgnoreGuiInset = true
+				screen.DisplayOrder = 9999
+				screen.Parent = (localPlayer and localPlayer:FindFirstChild("PlayerGui")) or game:GetService("CoreGui")
+				toggle._gui = screen
+			end
+
+			-- watch for players leaving
+			if toggle._playersConn then
+				pcall(function() toggle._playersConn:Disconnect() end)
+				toggle._playersConn = nil
+			end
+			toggle._playersConn = Players.PlayerRemoving:Connect(function(pl)
+				if toggle._bars and toggle._bars[pl] then
+					if toggle._bars[pl].diedConn then
+						pcall(function() toggle._bars[pl].diedConn:Disconnect() end)
+					end
+					pcall(function() toggle._bars[pl].outer:Destroy() end)
+					toggle._bars[pl] = nil
+				end
+			end)
+
+			-- main updater (mirror Box ESP: use projection of corner points)
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
+			end
+
+			toggle._conn = RunService.RenderStepped:Connect(function()
+				local camera = workspace and workspace.CurrentCamera
+				if not camera then return end
+				local viewport = camera.ViewportSize
+				local screenW, screenH = viewport.X, viewport.Y
+
+				local selfEspActive = isSelfEspOn()
+
+				for _, pl in ipairs(Players:GetPlayers()) do
+					local isLocal = (pl == localPlayer)
+					-- if this is the local player and Self Esp is off, hide/remove their bar and skip processing
+					if isLocal and not selfEspActive then
+						if toggle._bars and toggle._bars[pl] and toggle._bars[pl].outer then
+							pcall(function()
+								toggle._bars[pl].outer.Visible = false
+								-- also reset fill to zero to avoid visual artifacts
+								if toggle._bars[pl].fill then
+									toggle._bars[pl].fill.Size = UDim2.new(1, 0, 0, 0)
+									pcall(function()
+										local outerH = toggle._bars[pl].outer.AbsoluteSize.Y or 0
+										toggle._bars[pl].fill.Position = UDim2.new(0, 0, 0, outerH)
+									end)
+								end
+							end)
+						end
+						continue
+					end
+
+					local character = pl.Character
+					if not (character and character.Parent) then
+						-- remove existing
+						if toggle._bars and toggle._bars[pl] and toggle._bars[pl].outer then
+							pcall(function() toggle._bars[pl].outer:Destroy() end)
+							toggle._bars[pl] = nil
+						end
+					else
+						local minX, minY = math.huge, math.huge
+						local maxX, maxY = -math.huge, -math.huge
+						local anyProjected = false
+						local anyOnScreen = false
+
+						for _, part in ipairs(character:GetDescendants()) do
+							if part:IsA("BasePart") then
+								local size = part.Size
+								local cf = part.CFrame
+								local hx, hy, hz = size.X / 2, size.Y / 2, size.Z / 2
+								for ix = -1, 1, 2 do
+									for iy = -1, 1, 2 do
+										for iz = -1, 1, 2 do
+											local localCorner = Vector3.new(hx * ix, hy * iy, hz * iz)
+											local worldPoint = (cf * CFrame.new(localCorner)).p
+											local success, screenPos, onScreen = pcall(function()
+												return camera:WorldToViewportPoint(worldPoint)
+											end)
+											if success and screenPos then
+												anyProjected = true
+												local sx = screenPos.X
+												local sy = screenPos.Y
+												if sx == sx and sy == sy then
+													minX = math.min(minX, sx)
+													minY = math.min(minY, sy)
+													maxX = math.max(maxX, sx)
+													maxY = math.max(maxY, sy)
+												end
+												if onScreen then anyOnScreen = true end
+											end
+										end
+									end
+								end
+							end
+						end
+
+						local px, py, w, h = nil, nil, nil, nil
+						local barWidth = 6
+						local pad = 6
+
+						if anyProjected and anyOnScreen and minX < maxX and minY < maxY then
+							px = math.clamp(math.floor(minX - pad), 0, screenW)
+							py = math.clamp(math.floor(minY - pad), 0, screenH)
+							local rx = math.clamp(math.ceil(maxX + pad), 0, screenW)
+							local ry = math.clamp(math.ceil(maxY + pad), 0, screenH)
+							w = math.max(1, rx - px)
+							h = math.max(1, ry - py)
+
+							-- position bar to the left of the box (tight to box, with small gap)
+							px = math.max(0, px - (barWidth + 4))
+							py = py
+						else
+							-- fallback: project HumanoidRootPart but only if it's actually on-screen (prevents floating bars in sky)
+							local root = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+							local humanoid = character:FindFirstChildOfClass("Humanoid")
+							if root and humanoid and humanoid.Health > 0 then
+								local ok, screenPos, onScreen = pcall(function()
+									return camera:WorldToViewportPoint(root.Position)
+								end)
+								-- require onScreen and positive depth to avoid off-screen/behind-camera projections
+								if ok and screenPos and screenPos.X == screenPos.X and screenPos.Y == screenPos.Y and onScreen and screenPos.Z > 0 then
+									px = math.clamp(math.floor(screenPos.X - (barWidth + 10)), 0, screenW)
+									py = math.clamp(math.floor(screenPos.Y - 20), 0, screenH)
+									h = 40
+								end
+							end
+						end
+
+						-- ensure UI exists
+						local bar = toggle._bars[pl]
+						if not bar then
+							local outer = Instance.new("Frame")
+							outer.Name = pl.Name .. "_hp_outer"
+							outer.BackgroundTransparency = 1
+							outer.BorderSizePixel = 0
+							outer.ClipsDescendants = true
+							outer.ZIndex = 9999
+							outer.Parent = toggle._gui
+
+							local stroke = Instance.new("UIStroke")
+							stroke.Name = "HP_Outline"
+							stroke.Color = Color3.fromRGB(170,85,235)
+							stroke.Thickness = 2
+							stroke.Parent = outer
+
+							local fill = Instance.new("Frame")
+							fill.Name = pl.Name .. "_hp_fill"
+							-- use top-left anchoring so we can set pixel Y from the outer height
+							fill.AnchorPoint = Vector2.new(0, 0)
+							fill.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+							fill.BorderSizePixel = 0
+							-- start hidden and zero height; position will be updated when shown
+							fill.Position = UDim2.new(0, 0, 0, 0)
+							fill.Size = UDim2.new(1, 0, 0, 0)
+							fill.Parent = outer
+
+							toggle._bars[pl] = { outer = outer, fill = fill, diedConn = nil, humanoidRef = nil }
+							bar = toggle._bars[pl]
+						end
+
+						-- update / show or hide
+						if px and py and h and bar and bar.outer then
+							local humanoid = (character and character:FindFirstChildOfClass("Humanoid")) or nil
+							local hp = 0
+							local maxhp = 100
+							if humanoid then
+								hp = humanoid.Health or 0
+								maxhp = humanoid.MaxHealth or maxhp
+							end
+							maxhp = (maxhp > 0) and maxhp or 1
+							local pct = math.clamp(hp / maxhp, 0, 1)
+
+							-- manage died connection when humanoid changes
+							if humanoid ~= bar.humanoidRef then
+								if bar.diedConn then
+									pcall(function() bar.diedConn:Disconnect() end)
+									bar.diedConn = nil
+								end
+								bar.humanoidRef = humanoid
+								if humanoid then
+									bar.diedConn = humanoid.Died:Connect(function()
+										if bar and bar.outer and bar.fill then
+											bar.outer.Visible = false
+											bar.fill.Size = UDim2.new(1, 0, 0, 0)
+											pcall(function()
+												local outerH = bar.outer.AbsoluteSize.Y or 0
+												bar.fill.Position = UDim2.new(0, 0, 0, outerH)
+											end)
+										end
+									end)
+								end
+							end
+
+							-- if no humanoid or dead, hide
+							if humanoid and humanoid.Health > 0 then
+								bar.outer.Visible = true
+							else
+								bar.outer.Visible = false
+								bar.fill.Size = UDim2.new(1, 0, 0, 0)
+								pcall(function()
+									local outerH = bar.outer.AbsoluteSize.Y or 0
+									bar.fill.Position = UDim2.new(0, 0, 0, outerH)
+								end)
+							end
+
+							local totalH = h or 40
+							totalH = math.max(6, totalH)
+
+							-- apply position/size safely
+							if totalH ~= totalH or px ~= px or py ~= py then
+								-- NaN guard
+								bar.outer.Visible = false
+							else
+								bar.outer.Position = UDim2.new(0, px, 0, py)
+								bar.outer.Size = UDim2.new(0, barWidth, 0, totalH)
+								bar.outer.BackgroundTransparency = 1
+
+								local fillHeight = 0
+								if humanoid and humanoid.Health > 0 then
+									fillHeight = math.floor(totalH * pct + 0.5)
+									fillHeight = math.max(0, fillHeight)
+								end
+
+								-- set size in pixels and position so the bottom of the fill aligns with bottom of outer
+								bar.fill.Size = UDim2.new(1, 0, 0, fillHeight)
+								bar.fill.Position = UDim2.new(0, 0, 0, totalH - fillHeight)
+
+								-- color can be adjusted by percentage (green->yellow->red)
+								local color
+								if pct > 0.5 then
+									color = Color3.fromRGB(80, 200, 80)
+								elseif pct > 0.25 then
+									color = Color3.fromRGB(220, 160, 60)
+								else
+									color = Color3.fromRGB(220, 70, 70)
+								end
+								bar.fill.BackgroundColor3 = color
+							end
+						else
+							-- hide if we can't compute a valid screen position
+							if bar and bar.outer and bar.fill then
+								bar.outer.Visible = false
+								bar.fill.Size = UDim2.new(1, 0, 0, 0)
+								pcall(function()
+									local outerH = bar.outer.AbsoluteSize.Y or 0
+									bar.fill.Position = UDim2.new(0, 0, 0, outerH)
+								end)
+							end
+						end
+					end
+				end
+			end)
+		else
+			cleanup()
+		end
+	end
+})
+
+local toggle = visuals_section:Toggle({
+	Name = "Self Esp",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local RunService = game:GetService("RunService")
+		local localPlayer = Players.LocalPlayer
+
+		local function hideSelfBox()
+			if toggle._box then
+				pcall(function()
+					toggle._box.Visible = false
+					-- also shrink it to zero so it cannot visually "expand" if layout/NaN issues happen
+					toggle._box.Size = UDim2.new(0, 0, 0, 0)
+				end)
+			end
+		end
+
+		local function cleanup()
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
+			end
+			if toggle._charConn then
+				pcall(function() toggle._charConn:Disconnect() end)
+				toggle._charConn = nil
+			end
+			if toggle._humanoidDiedConn then
+				pcall(function() toggle._humanoidDiedConn:Disconnect() end)
+				toggle._humanoidDiedConn = nil
+			end
+			if toggle._gui then
+				pcall(function() toggle._gui:Destroy() end)
+				toggle._gui = nil
+			end
+			if toggle._box then
+				pcall(function() toggle._box:Destroy() end)
+				toggle._box = nil
+			end
+		end
+
+		if val then
+			if not toggle._gui then
+				local screen = Instance.new("ScreenGui")
+				screen.Name = "Self_ESP"
+				screen.ResetOnSpawn = false
+				screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
+				screen.IgnoreGuiInset = true
+				screen.DisplayOrder = 9999
+				screen.Parent = (localPlayer and localPlayer:FindFirstChild("PlayerGui")) or game:GetService("CoreGui")
+				toggle._gui = screen
+			end
+
+			-- ensure we react to character respawn/removal so the box is hidden immediately
+			if toggle._charConn then
+				pcall(function() toggle._charConn:Disconnect() end)
+				toggle._charConn = nil
+			end
+			toggle._charConn = localPlayer.CharacterAdded:Connect(function(char)
+				-- hide existing box when a new character spawns (old one is gone)
+				hideSelfBox()
+				-- connect to humanoid death on the new character
+				if toggle._humanoidDiedConn then
+					pcall(function() toggle._humanoidDiedConn:Disconnect() end)
+					toggle._humanoidDiedConn = nil
+				end
+				local success, hum = pcall(function() return char:FindFirstChildOfClass("Humanoid") end)
+				if success and hum then
+					toggle._humanoidDiedConn = hum.Died:Connect(function()
+						hideSelfBox()
+					end)
+				end
+			end)
+			-- also hide immediately if character is being removed
+			pcall(function()
+				if localPlayer.CharacterRemoving then
+					localPlayer.CharacterRemoving:Connect(function()
+						hideSelfBox()
+					end)
+				end
+			end)
+
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
+			end
+
+			toggle._conn = RunService.RenderStepped:Connect(function()
+				local character = localPlayer and localPlayer.Character
+				local cam = workspace and workspace.CurrentCamera
+				if not character or not cam then
+					hideSelfBox()
+					return
+				end
+
+				-- if humanoid exists and is dead, hide the box and skip drawing
+				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.Health and humanoid.Health <= 0 then
+					hideSelfBox()
+					return
+				end
+
+				local minX, minY = math.huge, math.huge
+				local maxX, maxY = -math.huge, -math.huge
+				local anyProjected = false
+				local anyOnScreen = false
+
+				for _, part in ipairs(character:GetDescendants()) do
+					if part:IsA("BasePart") then
+						local size = part.Size
+						local cf = part.CFrame
+						local hx, hy, hz = size.X / 2, size.Y / 2, size.Z / 2
+
+						for ix = -1, 1, 2 do
+							for iy = -1, 1, 2 do
+								for iz = -1, 1, 2 do
+									local worldPoint = (cf * CFrame.new(Vector3.new(hx * ix, hy * iy, hz * iz))).p
+									local ok, screenPos, onScreen = pcall(function()
+										return cam:WorldToViewportPoint(worldPoint)
+									end)
+									if ok and screenPos then
+										anyProjected = true
+										local sx, sy = screenPos.X, screenPos.Y
+										if sx == sx and sy == sy then
+											minX = math.min(minX, sx)
+											minY = math.min(minY, sy)
+											maxX = math.max(maxX, sx)
+											maxY = math.max(maxY, sy)
+										end
+										if onScreen then anyOnScreen = true end
+									end
+								end
+							end
+						end
+					end
+				end
+
+				if anyProjected and minX < maxX and minY < maxY then
+					local pad = 6
+					local viewport = cam.ViewportSize
+					local screenW, screenH = viewport.X, viewport.Y
+					local px = math.clamp(math.floor(minX - pad), 0, screenW)
+					local py = math.clamp(math.floor(minY - pad), 0, screenH)
+					local rx = math.clamp(math.ceil(maxX + pad), 0, screenW)
+					local ry = math.clamp(math.ceil(maxY + pad), 0, screenH)
+					local w = math.max(1, rx - px - 4)
+					local h = math.max(1, ry - py - 4)
+
+					if not toggle._box or not toggle._box.Parent then
+						local box = Instance.new("Frame")
+						box.Name = "Self_Esp_Box"
+						box.BackgroundTransparency = 1
+						box.ClipsDescendants = false
+						box.Parent = toggle._gui
+						local stroke = Instance.new("UIStroke")
+						stroke.Name = "ESPStroke"
+						stroke.Color = Color3.fromRGB(170, 85, 235)
+						stroke.Thickness = 2
+						stroke.LineJoinMode = Enum.LineJoinMode.Round
+						stroke.Parent = box
+						toggle._box = box
+					end
+
+					-- ensure no NaN/infinite values get applied
+					if w ~= w or h ~= h or px ~= px or py ~= py then
+						hideSelfBox()
+					else
+						toggle._box.Position = UDim2.new(0, px + 2, 0, py + 2)
+						toggle._box.Size = UDim2.new(0, w, 0, h)
+						toggle._box.Visible = true
+					end
+				else
+					hideSelfBox()
+				end
+			end)
+		else
+			cleanup()
+		end
+	end
+})
+
+local misc_section = misc:Section({Name = "Random Stuff", size = 50})
+local button = misc_section:Button({
+	Name = "Invincible fly (BANNABLE)",
+	Callback = function()
+		-- PLACEHOLDER:
+		-- Provide the script to run by assigning a function to `InvincibleFlyScript`
+		-- Example (somewhere else in your code):
+		-- InvincibleFlyScript = function()
+	-- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+local flightPower = 30 -- Мощность полета
+local maxFlightPower = 100 -- Максимальная мощность полета
+local minFlightPower = 10 -- Минимальная мощность полета
+local speedIncrement = 5 -- Прирост скорости при увеличении
+local flyingTool = nil
+
+local bodyPosition = Instance.new("BodyPosition")
+local bodyGyro = Instance.new("BodyGyro")
+
+local isFlying = false
+local particleEmitter = nil -- Эмиттер частиц
+
+local localPlayer = game.Players.LocalPlayer
+local characterModel = localPlayer.Character or localPlayer.CharacterAdded:wait()
+local torso = characterModel:FindFirstChild("UpperTorso") or characterModel:FindFirstChild("Torso")
+
+local playerMouse = localPlayer:GetMouse()
+local flightGui = nil -- GUI для отображения состояния полета
+
+-- ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ИНСТРУМЕНТА И ИНТЕРФЕЙСА
+local function initializeTool()
+    -- Создание инструмента "FlyTool" и размещение его в рюкзаке игрока
+    flyingTool = Instance.new("Tool")
+    flyingTool.Name = "FlyTool"
+    flyingTool.RequiresHandle = false
+    flyingTool.Parent = localPlayer.Backpack
+
+    bodyGyro.maxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bodyPosition.maxForce = Vector3.new(math.huge, math.huge, math.huge)
+
+    script.Parent = flyingTool
+
+    -- Создание GUI для отображения состояния полета
+    flightGui = Instance.new("ScreenGui", localPlayer:WaitForChild("PlayerGui"))
+    local statusLabel = Instance.new("TextLabel", flightGui)
+    statusLabel.Size = UDim2.new(0, 200, 0, 50)
+    statusLabel.Position = UDim2.new(0.5, -100, 0, 50)
+    statusLabel.Text = "Flight Power: " .. flightPower
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.TextScaled = true
+
+    -- Обновление текста с мощностью полета
+    local function updateFlightPower()
+        statusLabel.Text = "Flight Power: " .. flightPower
+    end
+
+    -- События изменения мощности полета с использованием стрелок
+    playerMouse.KeyDown:Connect(function(key)
+        if key == Enum.KeyCode.Up then
+            flightPower = math.min(flightPower + speedIncrement, maxFlightPower)
+            updateFlightPower()
+        elseif key == Enum.KeyCode.Down then
+            flightPower = math.max(flightPower - speedIncrement, minFlightPower)
+            updateFlightPower()
+        elseif key == Enum.KeyCode.F then
+            if isFlying then
+                onToolDeactivated()
+            else
+                onToolActivated()
+            end
+        end
+    end)
+end
+
+initializeTool()
+
+-- ФУНКЦИИ УПРАВЛЕНИЯ ПОЛЕТОМ
+-- Обработчик активации инструмента
+function onToolActivated()
+    if not torso then
+        warn("Торс не найден, полет невозможен.")
+        return
+    end
+
+    -- Настройка компонентов для полета
+    bodyPosition.Parent = torso
+    bodyPosition.Position = torso.Position + Vector3.new(0, 10, 0)
+    bodyGyro.Parent = torso
+
+    characterModel.Humanoid.PlatformStand = true
+
+    -- Создание эффекта частиц
+    particleEmitter = Instance.new("ParticleEmitter", torso)
+    particleEmitter.Texture = "rbxassetid://243098098" -- ID текстуры частицы
+    particleEmitter.Rate = 100
+    particleEmitter.Lifetime = NumberRange.new(1, 2)
+    particleEmitter.Speed = NumberRange.new(5, 10)
+    particleEmitter.VelocitySpread = 180
+
+    for _, motor in ipairs(torso:GetChildren()) do
+        if motor:IsA("Motor") then
+            motor.MaxVelocity = 0
+            motor.CurrentAngle = -1
+            if motor.Name == "Left Hip" then
+                motor.CurrentAngle = 1
+            end
+        end
+    end
+
+    isFlying = true
+    while isFlying do
+        local mousePos = playerMouse.Hit.p
+        bodyGyro.CFrame = CFrame.new(torso.Position, mousePos) * CFrame.fromEulerAnglesXYZ(-math.pi / 2, 0, 0)
+        bodyPosition.Position = torso.Position + (mousePos - torso.Position).unit * flightPower
+        wait(0.1) -- Уменьшение частоты обновления для улучшения производительности
+    end
+end
+
+-- Обработчик деактивации инструмента
+function onToolDeactivated()
+    if not torso then
+        warn("Торс не найден, невозможно остановить полет.")
+        return
+    end
+
+    bodyGyro.Parent = nil
+    bodyPosition.Parent = nil
+    isFlying = false
+
+    if particleEmitter then
+        particleEmitter:Destroy()
+        particleEmitter = nil
+    end
+
+    characterModel.Humanoid.PlatformStand = false
+
+    for _, motor in ipairs(torso:GetChildren()) do
+        if motor:IsA("Motor") then
+            motor.MaxVelocity = 1
+        end
+    end
+end
+
+flyingTool.Unequipped:Connect(function() isFlying = false end)
+flyingTool.Activated:Connect(onToolActivated)
+flyingTool.Deactivated:Connect(onToolDeactivated)
+		-- end
+		--
+		-- When the button is pressed, the function assigned to InvincibleFlyScript
+		-- will be invoked. If it's not set, a warning will be shown.
+
+		if type(InvincibleFlyScript) == "function" then
+			local ok, err = pcall(InvincibleFlyScript)
+			if not ok then
+				warn("InvincibleFlyScript error:", err)
+			end
+		else
+			warn("InvincibleFlyScript not defined. Assign a function to InvincibleFlyScript as a placeholder for the actual script.")
+		end
+	end
+})
+
+aimbot:Turn(true)
+-- // Returning
+return library, utility, obelus
