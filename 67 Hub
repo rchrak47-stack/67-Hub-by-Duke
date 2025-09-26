@@ -2875,7 +2875,7 @@ local toggle = visuals_section:Toggle({
 	end
 })
 
-local misc_section = misc:Section({Name = "Random Stuff", size = 50})
+local misc_section = misc:Section({Name = "Random Stuff", size = 70})
 local button = misc_section:Button({
 	Name = "Invincible fly (BANNABLE)",
 	Callback = function()
@@ -3036,6 +3036,93 @@ flyingTool.Deactivated:Connect(onToolDeactivated)
 		end
 	end
 })
+
+local button = misc_section:Button({
+	Name = "TP tool",
+	Callback = function()
+		local Players = game:GetService("Players")
+		local player = Players.LocalPlayer
+		if not player then return end
+
+		-- avoid creating multiple tools
+		if player.Backpack:FindFirstChild("TP Tool") or (player.Character and player.Character:FindFirstChild("TP Tool")) then
+			warn("TP Tool already given")
+			return
+		end
+
+		local tool = Instance.new("Tool")
+		tool.Name = "TP Tool"
+		tool.RequiresHandle = false
+		tool.CanBeDropped = true
+		tool.Parent = player:WaitForChild("Backpack")
+
+		local mouse = player:GetMouse()
+		local equippedConn, clickConn, unequippedConn
+		local debounce = false
+
+		local function teleportTo(pos)
+			if not pos then return end
+			local char = player.Character
+			if not char then return end
+			local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+			if not root then return end
+
+			pcall(function()
+				-- preserve current facing direction by using the root's LookVector
+				local look = root.CFrame.LookVector
+				local newPos = pos + Vector3.new(0, 3, 0)
+
+				-- try to preserve the current linear velocity so animations don't reset when walking
+				local prevVel = Vector3.new(0, 0, 0)
+				local ok, vel = pcall(function() return root.AssemblyLinearVelocity end)
+				if ok and vel then
+					prevVel = vel
+				end
+
+				-- move the root while keeping the same facing direction
+				root.CFrame = CFrame.new(newPos, newPos + look)
+
+				-- restore previous velocity to avoid abrupt animation/state resets
+				pcall(function() root.AssemblyLinearVelocity = prevVel end)
+			end)
+		end
+
+		equippedConn = tool.Equipped:Connect(function()
+			-- connect to mouse click while tool is equipped
+			clickConn = mouse.Button1Down:Connect(function()
+				if debounce then return end
+				debounce = true
+				-- mouse.Hit is a CFrame; get its position
+				local ok, hit = pcall(function() return mouse.Hit end)
+				if ok and hit and hit.p then
+					teleportTo(hit.p)
+				end
+				wait(0.15) -- small throttle
+				debounce = false
+			end)
+		end)
+
+		unequippedConn = tool.Unequipped:Connect(function()
+			-- cleanup click connection when unequipped
+			if clickConn then
+				pcall(function() clickConn:Disconnect() end)
+				clickConn = nil
+			end
+		end)
+
+		-- ensure connections are cleaned up if the tool is removed
+		tool.AncestryChanged:Connect(function(_, parent)
+			if not parent then
+				for _, c in pairs({equippedConn, clickConn, unequippedConn}) do
+					if c then pcall(function() c:Disconnect() end) end
+				end
+			end
+		end)
+
+		warn("TP Tool created. Equip it and click to teleport to the clicked location.")
+	end
+})
+
 
 aimbot:Turn(true)
 -- // Returning
