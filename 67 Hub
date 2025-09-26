@@ -1669,7 +1669,7 @@ local toggle = aimbot_section3:Toggle({
 	end
 })
 
-local visuals_section = visuals:Section({Name = "Esp", size = 100})
+local visuals_section = visuals:Section({Name = "Esp", size = 120})
 local toggle = visuals_section:Toggle({
 	Name = "Esp Boxes",
 	Default = false,
@@ -1950,6 +1950,129 @@ local toggle = visuals_section:Toggle({
 		end
 	end
 })
+
+local toggle = visuals_section:Toggle({Name = "Chams", Default = false, Callback = function(val)
+	local Players = game:GetService("Players")
+	local localPlayer = Players.LocalPlayer
+	local CoreGui = game:GetService("CoreGui")
+
+	local function destroyHighlight(h)
+		if h and h.Parent then
+			pcall(function() h:Destroy() end)
+		end
+	end
+
+	local function cleanup()
+		if toggle._playersConn then
+			pcall(function() toggle._playersConn:Disconnect() end)
+			toggle._playersConn = nil
+		end
+		if toggle._playerRemovingConn then
+			pcall(function() toggle._playerRemovingConn:Disconnect() end)
+			toggle._playerRemovingConn = nil
+		end
+		if toggle._charConns then
+			for pl, conn in pairs(toggle._charConns) do
+				pcall(function() conn:Disconnect() end)
+			end
+			toggle._charConns = nil
+		end
+		if toggle._highlights then
+			for pl, h in pairs(toggle._highlights) do
+				destroyHighlight(h)
+			end
+			toggle._highlights = nil
+		end
+	end
+
+	if val then
+		toggle._highlights = toggle._highlights or {}
+		toggle._charConns = toggle._charConns or {}
+
+		local function applyHighlight(pl, character)
+			if not pl or pl == localPlayer then return end
+			if not character or not character.Parent then return end
+
+			-- remove any existing highlight for this player
+			if toggle._highlights[pl] then
+				destroyHighlight(toggle._highlights[pl])
+				toggle._highlights[pl] = nil
+			end
+
+			local ok, h = pcall(function() return Instance.new("Highlight") end)
+			if not ok or not h then return end
+
+			-- Adornee can be the character model (Highlight handles that)
+			pcall(function() h.Adornee = character end)
+			-- light purple fill
+			h.FillColor = Color3.fromRGB(170, 85, 235)
+			h.OutlineColor = Color3.fromRGB(120, 40, 200)
+			h.FillTransparency = 0.45
+			h.OutlineTransparency = 0.7
+			-- render through walls for classic "chams" effect when available
+			pcall(function() h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop end)
+			-- parent to CoreGui so it renders for the local client
+			pcall(function() h.Parent = CoreGui end)
+
+			toggle._highlights[pl] = h
+		end
+
+		-- Attach highlights for existing players and set up CharacterAdded listeners
+		for _, pl in ipairs(Players:GetPlayers()) do
+			if pl ~= localPlayer then
+				if pl.Character then
+					pcall(function() applyHighlight(pl, pl.Character) end)
+				end
+				-- ensure we only create one connection per player
+				if not toggle._charConns[pl] then
+					toggle._charConns[pl] = pl.CharacterAdded:Connect(function(char)
+						-- small delay to allow character parts to exist
+						wait(0.03)
+						pcall(function() applyHighlight(pl, char) end)
+					end)
+				end
+			end
+		end
+
+		-- watch for new players joining
+		if toggle._playersConn then
+			pcall(function() toggle._playersConn:Disconnect() end)
+			toggle._playersConn = nil
+		end
+		toggle._playersConn = Players.PlayerAdded:Connect(function(pl)
+			if pl == localPlayer then return end
+			-- listen for character spawn
+			toggle._charConns[pl] = pl.CharacterAdded:Connect(function(char)
+				wait(0.03)
+				pcall(function() applyHighlight(pl, char) end)
+			end)
+			-- if character already present
+			if pl.Character then
+				wait(0.03)
+				pcall(function() applyHighlight(pl, pl.Character) end)
+			end
+		end)
+
+		-- cleanup when players leave
+		if toggle._playerRemovingConn then
+			pcall(function() toggle._playerRemovingConn:Disconnect() end)
+			toggle._playerRemovingConn = nil
+		end
+		toggle._playerRemovingConn = Players.PlayerRemoving:Connect(function(pl)
+			if toggle._highlights and toggle._highlights[pl] then
+				destroyHighlight(toggle._highlights[pl])
+				toggle._highlights[pl] = nil
+			end
+			if toggle._charConns and toggle._charConns[pl] then
+				pcall(function() toggle._charConns[pl]:Disconnect() end)
+				toggle._charConns[pl] = nil
+			end
+		end)
+	else
+		cleanup()
+	end
+end})
+
 local toggle = visuals_section:Toggle({Name = "Esp Tracer", Default = false, Callback = function(val)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
