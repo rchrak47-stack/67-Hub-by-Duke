@@ -849,7 +849,7 @@ local aimbot = window:Page({Name = "Local Player"})
 local visuals = window:Page({Name = "Visuals"})
 local misc = window:Page({Name = "Misc"})
 --
-local aimbot_section = aimbot:Section({Name = "Movement", size = 140})
+local aimbot_section = aimbot:Section({Name = "Movement", size = 160})
 local aimbot_section2 = aimbot:Section({Name = "Client", size = 120, Side = "Right"})
 -- ensure sections stack instead of overlapping by adding a vertical UIListLayout
 local function ensureSectionLayouts(page)
@@ -1080,6 +1080,84 @@ local toggle = aimbot_section:Toggle({
 				toggle._noclipConnection:Disconnect()
 				toggle._noclipConnection = nil
 			end
+		end
+	end
+})
+
+local toggle = aimbot_section:Toggle({
+	Name = "Infinite Jump",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local uis = game:GetService("UserInputService")
+		local RunService = game:GetService("RunService")
+		local pl = Players.LocalPlayer
+
+		-- cleanup previous connections
+		for _, k in ipairs({"_inputBegan", "_inputEnded", "_hbConn", "_charConn"}) do
+			if toggle[k] then
+				pcall(function() toggle[k]:Disconnect() end)
+				toggle[k] = nil
+			end
+		end
+		toggle._spaceHeld = false
+
+		-- helper to perform a jump and push upward
+		local function tryJumpAndAscend()
+			local char = pl and pl.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
+			if hum and hum.Health > 0 then
+				pcall(function()
+					-- request a jump (keeps humanoid state consistent)
+					hum.Jump = true
+					hum:ChangeState(Enum.HumanoidStateType.Freefall)
+				end)
+			end
+			if root then
+				pcall(function()
+					-- push player upward while holding space
+					local ok, vel = pcall(function() return root.AssemblyLinearVelocity end)
+					vel = (ok and vel) or Vector3.new(0, 0, 0)
+					local ascentSpeed = 60 -- tweak this value to control ascent rate
+					if vel.Y < ascentSpeed then
+						root.AssemblyLinearVelocity = Vector3.new(vel.X, ascentSpeed, vel.Z)
+					end
+				end)
+			end
+		end
+
+		if val then
+			-- Input began/ended to track holding space (ignore when typing in GUI)
+			toggle._inputBegan = uis.InputBegan:Connect(function(input, gameProcessed)
+				if gameProcessed then return end
+				if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
+					toggle._spaceHeld = true
+				end
+			end)
+			toggle._inputEnded = uis.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
+					toggle._spaceHeld = false
+				end
+			end)
+
+			-- Heartbeat loop applies jump/ascend while space is held
+			toggle._hbConn = RunService.Heartbeat:Connect(function()
+				if toggle._spaceHeld then
+					tryJumpAndAscend()
+				end
+			end)
+
+			-- rehook on respawn so it works with new character
+			toggle._charConn = pl.CharacterAdded:Connect(function()
+				-- reset state and nudge once after spawn
+				toggle._spaceHeld = false
+				wait(0.05)
+				tryJumpAndAscend()
+			end)
+		else
+			-- turned off: ensure state cleared
+			toggle._spaceHeld = false
 		end
 	end
 })
@@ -1455,93 +1533,6 @@ fovSlider = aimbot_section2:Slider({
 })
 
 local aimbot_section3 = aimbot:Section({Name = "Character", size = 80})
--- spin controls
-local spinToggle, spinSlider
-
-spinToggle = aimbot_section3:Toggle({
-	Name = "Spin (Shiftlock = 💀)",
-	Default = false,
-	Callback = function(val)
-		local Players = game:GetService("Players")
-		local localPlayer = Players.LocalPlayer
-
-		local function getRoot()
-			local char = localPlayer and localPlayer.Character
-			if not char then return nil end
-			return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-		end
-
-		local function cleanup()
-			if spinToggle._body then
-				pcall(function() spinToggle._body:Destroy() end)
-				spinToggle._body = nil
-			end
-			if spinToggle._charConn then
-				pcall(function() spinToggle._charConn:Disconnect() end)
-				spinToggle._charConn = nil
-			end
-		end
-
-		-- remove any previous state
-		cleanup()
-
-		if val then
-			local function attachToRoot()
-				local root = getRoot()
-				if not root then return end
-
-				-- ensure we don't leave multiple bodies around
-				if spinToggle._body and spinToggle._body.Parent ~= root then
-					pcall(function() spinToggle._body:Destroy() end)
-					spinToggle._body = nil
-				end
-
-				if not spinToggle._body then
-					local bav = Instance.new("BodyAngularVelocity")
-					bav.Name = "Spin_BodyAngularVelocity"
-					-- only allow rotation around Y
-					bav.MaxTorque = Vector3.new(0, math.huge, 0)
-					bav.AngularVelocity = Vector3.new(0, ((spinSlider and spinSlider:Get()) or 0) * math.pi / 180, 0)
-					bav.Parent = root
-					spinToggle._body = bav
-				else
-					-- update parent in case root replaced
-					spinToggle._body.Parent = root
-					pcall(function()
-						spinToggle._body.AngularVelocity = Vector3.new(0, ((spinSlider and spinSlider:Get()) or 0) * math.pi / 180, 0)
-					end)
-				end
-			end
-
-			-- attach immediately if character exists
-			attachToRoot()
-
-			-- reattach after respawn
-			spinToggle._charConn = localPlayer.CharacterAdded:Connect(function()
-				wait(0.05)
-				attachToRoot()
-			end)
-		else
-			-- disable: remove the angular velocity object
-			cleanup()
-		end
-	end
-})
-
-spinSlider = aimbot_section3:Slider({
-	Default = 3600,
-	Minimum = 0,
-	Maximum = 10000,
-	Decimals = 1,
-	Callback = function(val)
-		-- update existing BodyAngularVelocity if present
-		if spinToggle and spinToggle._body then
-			pcall(function()
-				spinToggle._body.AngularVelocity = Vector3.new(0, val * math.pi / 180, 0)
-			end)
-		end
-	end
-})
 
 local toggle = aimbot_section3:Toggle({
 	Name = "Anti fling",
@@ -1665,6 +1656,94 @@ local toggle = aimbot_section3:Toggle({
 			enable()
 		else
 			restoreAll()
+		end
+	end
+})
+
+-- spin controls
+local spinToggle, spinSlider
+
+spinToggle = aimbot_section3:Toggle({
+	Name = "Spin (Shiftlock = 💀)",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local localPlayer = Players.LocalPlayer
+
+		local function getRoot()
+			local char = localPlayer and localPlayer.Character
+			if not char then return nil end
+			return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+		end
+
+		local function cleanup()
+			if spinToggle._body then
+				pcall(function() spinToggle._body:Destroy() end)
+				spinToggle._body = nil
+			end
+			if spinToggle._charConn then
+				pcall(function() spinToggle._charConn:Disconnect() end)
+				spinToggle._charConn = nil
+			end
+		end
+
+		-- remove any previous state
+		cleanup()
+
+		if val then
+			local function attachToRoot()
+				local root = getRoot()
+				if not root then return end
+
+				-- ensure we don't leave multiple bodies around
+				if spinToggle._body and spinToggle._body.Parent ~= root then
+					pcall(function() spinToggle._body:Destroy() end)
+					spinToggle._body = nil
+				end
+
+				if not spinToggle._body then
+					local bav = Instance.new("BodyAngularVelocity")
+					bav.Name = "Spin_BodyAngularVelocity"
+					-- only allow rotation around Y
+					bav.MaxTorque = Vector3.new(0, math.huge, 0)
+					bav.AngularVelocity = Vector3.new(0, ((spinSlider and spinSlider:Get()) or 0) * math.pi / 180, 0)
+					bav.Parent = root
+					spinToggle._body = bav
+				else
+					-- update parent in case root replaced
+					spinToggle._body.Parent = root
+					pcall(function()
+						spinToggle._body.AngularVelocity = Vector3.new(0, ((spinSlider and spinSlider:Get()) or 0) * math.pi / 180, 0)
+					end)
+				end
+			end
+
+			-- attach immediately if character exists
+			attachToRoot()
+
+			-- reattach after respawn
+			spinToggle._charConn = localPlayer.CharacterAdded:Connect(function()
+				wait(0.05)
+				attachToRoot()
+			end)
+		else
+			-- disable: remove the angular velocity object
+			cleanup()
+		end
+	end
+})
+
+spinSlider = aimbot_section3:Slider({
+	Default = 3600,
+	Minimum = 0,
+	Maximum = 10000,
+	Decimals = 1,
+	Callback = function(val)
+		-- update existing BodyAngularVelocity if present
+		if spinToggle and spinToggle._body then
+			pcall(function()
+				spinToggle._body.AngularVelocity = Vector3.new(0, val * math.pi / 180, 0)
+			end)
 		end
 	end
 })
