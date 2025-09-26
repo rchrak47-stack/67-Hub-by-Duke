@@ -851,6 +851,38 @@ local misc = window:Page({Name = "Misc"})
 --
 local aimbot_section = aimbot:Section({Name = "Movement", size = 140})
 local aimbot_section2 = aimbot:Section({Name = "Client", size = 120, Side = "Right"})
+-- ensure sections stack instead of overlapping by adding a vertical UIListLayout
+local function ensureSectionLayouts(page)
+	-- add layout to left holder if missing
+	if page.Left and not page.Left:FindFirstChildOfClass("UIListLayout") then
+		utility:Create({
+			Type = "UIListLayout",
+			Properties = {
+				Parent = page.Left,
+				Padding = UDim.new(0, 4),
+				FillDirection = "Vertical",
+				SortOrder = "LayoutOrder"
+			}
+		})
+	end
+	-- add layout to right holder if missing
+	if page.Right and not page.Right:FindFirstChildOfClass("UIListLayout") then
+		utility:Create({
+			Type = "UIListLayout",
+			Properties = {
+				Parent = page.Right,
+				Padding = UDim.new(0, 4),
+				FillDirection = "Vertical",
+				SortOrder = "LayoutOrder"
+			}
+		})
+	end
+end
+
+-- apply layout to the aimbot page so sections stack properly
+ensureSectionLayouts(aimbot)
+
+-- Now create the third section; it will be laid out under existing sections
 --
 local flyToggle
 local flySlider
@@ -1422,7 +1454,222 @@ fovSlider = aimbot_section2:Slider({
 	end
 })
 
-local visuals_section = visuals:Section({Name = "Esp", size = 120})
+local aimbot_section3 = aimbot:Section({Name = "Character", size = 80})
+-- spin controls
+local spinToggle, spinSlider
+
+spinToggle = aimbot_section3:Toggle({
+	Name = "Spin (Shiftlock = 💀)",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local localPlayer = Players.LocalPlayer
+
+		local function getRoot()
+			local char = localPlayer and localPlayer.Character
+			if not char then return nil end
+			return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+		end
+
+		local function cleanup()
+			if spinToggle._body then
+				pcall(function() spinToggle._body:Destroy() end)
+				spinToggle._body = nil
+			end
+			if spinToggle._charConn then
+				pcall(function() spinToggle._charConn:Disconnect() end)
+				spinToggle._charConn = nil
+			end
+		end
+
+		-- remove any previous state
+		cleanup()
+
+		if val then
+			local function attachToRoot()
+				local root = getRoot()
+				if not root then return end
+
+				-- ensure we don't leave multiple bodies around
+				if spinToggle._body and spinToggle._body.Parent ~= root then
+					pcall(function() spinToggle._body:Destroy() end)
+					spinToggle._body = nil
+				end
+
+				if not spinToggle._body then
+					local bav = Instance.new("BodyAngularVelocity")
+					bav.Name = "Spin_BodyAngularVelocity"
+					-- only allow rotation around Y
+					bav.MaxTorque = Vector3.new(0, math.huge, 0)
+					bav.AngularVelocity = Vector3.new(0, ((spinSlider and spinSlider:Get()) or 0) * math.pi / 180, 0)
+					bav.Parent = root
+					spinToggle._body = bav
+				else
+					-- update parent in case root replaced
+					spinToggle._body.Parent = root
+					pcall(function()
+						spinToggle._body.AngularVelocity = Vector3.new(0, ((spinSlider and spinSlider:Get()) or 0) * math.pi / 180, 0)
+					end)
+				end
+			end
+
+			-- attach immediately if character exists
+			attachToRoot()
+
+			-- reattach after respawn
+			spinToggle._charConn = localPlayer.CharacterAdded:Connect(function()
+				wait(0.05)
+				attachToRoot()
+			end)
+		else
+			-- disable: remove the angular velocity object
+			cleanup()
+		end
+	end
+})
+
+spinSlider = aimbot_section3:Slider({
+	Default = 3600,
+	Minimum = 0,
+	Maximum = 10000,
+	Decimals = 1,
+	Callback = function(val)
+		-- update existing BodyAngularVelocity if present
+		if spinToggle and spinToggle._body then
+			pcall(function()
+				spinToggle._body.AngularVelocity = Vector3.new(0, val * math.pi / 180, 0)
+			end)
+		end
+	end
+})
+
+local toggle = aimbot_section3:Toggle({
+	Name = "Anti fling",
+	Default = false,
+	Callback = function(val)
+		local Players = game:GetService("Players")
+		local RunService = game:GetService("RunService")
+		local localPlayer = Players.LocalPlayer
+
+		-- storage for original CanCollide values and connections
+		toggle._orig = toggle._orig or {}
+		toggle._playerCharConns = toggle._playerCharConns or {}
+		toggle._charDescConns = toggle._charDescConns or {}
+		toggle._playersAddedConn = toggle._playersAddedConn
+
+		local function trackPart(part)
+			if not part or not part.Parent then return end
+			if not part:IsA("BasePart") then return end
+			if toggle._orig[part] == nil then
+				local ok, v = pcall(function() return part.CanCollide end)
+				toggle._orig[part] = (ok and v) or part.CanCollide
+			end
+			pcall(function() part.CanCollide = false end)
+		end
+
+		local function disableForCharacter(char)
+			if not char then return end
+			for _, d in ipairs(char:GetDescendants()) do
+				if d:IsA("BasePart") then
+					trackPart(d)
+				end
+			end
+			-- ensure future parts added to this character are also handled
+			if not toggle._charDescConns[char] then
+				toggle._charDescConns[char] = char.DescendantAdded:Connect(function(desc)
+					if desc:IsA("BasePart") then
+						trackPart(desc)
+					end
+				end)
+			end
+		end
+
+		local function enable()
+			-- disable collisions for all existing other players
+			for _, pl in ipairs(Players:GetPlayers()) do
+				if pl ~= localPlayer then
+					if pl.Character then disableForCharacter(pl.Character) end
+					-- track future character spawns for this player
+					if not toggle._playerCharConns[pl] then
+						toggle._playerCharConns[pl] = pl.CharacterAdded:Connect(function(ch) disableForCharacter(ch) end)
+					end
+				end
+			end
+
+			-- handle new players joining after toggle enabled
+			if not toggle._playersAddedConn then
+				toggle._playersAddedConn = Players.PlayerAdded:Connect(function(pl)
+					if pl ~= localPlayer then
+						if pl.Character then disableForCharacter(pl.Character) end
+						toggle._playerCharConns[pl] = pl.CharacterAdded:Connect(function(ch) disableForCharacter(ch) end)
+					end
+				end)
+			end
+
+			-- enforce CanCollide = false continuously to avoid server/replication flipping them back
+			if not toggle._enforceConn then
+				toggle._enforceConn = RunService.Stepped:Connect(function()
+					for _, pl in ipairs(Players:GetPlayers()) do
+						if pl ~= localPlayer and pl.Character and pl.Character.Parent then
+							for _, part in ipairs(pl.Character:GetDescendants()) do
+								if part:IsA("BasePart") then
+									-- store original once if missing, then enforce false
+									if toggle._orig[part] == nil then
+										local ok, v = pcall(function() return part.CanCollide end)
+										toggle._orig[part] = (ok and v) or part.CanCollide
+									end
+									pcall(function() part.CanCollide = false end)
+								end
+							end
+						end
+					end
+				end)
+			end
+		end
+
+		local function restoreAll()
+			-- stop enforcement first
+			if toggle._enforceConn then
+				pcall(function() toggle._enforceConn:Disconnect() end)
+				toggle._enforceConn = nil
+			end
+
+			-- restore original CanCollide where possible
+			for part, orig in pairs(toggle._orig) do
+				if part and part.Parent then
+					pcall(function() part.CanCollide = orig end)
+				end
+			end
+			toggle._orig = {}
+
+			-- disconnect per-character descendant listeners
+			for char, conn in pairs(toggle._charDescConns) do
+				pcall(function() conn:Disconnect() end)
+			end
+			toggle._charDescConns = {}
+
+			-- disconnect per-player character listeners
+			for pl, conn in pairs(toggle._playerCharConns) do
+				pcall(function() conn:Disconnect() end)
+			end
+			toggle._playerCharConns = {}
+
+			-- disconnect player added listener
+			if toggle._playersAddedConn then
+				pcall(function() toggle._playersAddedConn:Disconnect() end)
+				toggle._playersAddedConn = nil
+			end
+		end
+
+		if val then
+			enable()
+		else
+			restoreAll()
+		end
+	end
+})
+
+local visuals_section = visuals:Section({Name = "Esp", size = 100})
 local toggle = visuals_section:Toggle({
 	Name = "Esp Boxes",
 	Default = false,
