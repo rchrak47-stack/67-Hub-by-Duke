@@ -3323,7 +3323,7 @@ local toggle = aiming_section:Toggle({Name = "Torso Aimbot", Default = false, Ca
 	end)
 end})
 
-local misc_section = misc:Section({Name = "Random Stuff", size = 70})
+local misc_section = misc:Section({Name = "Random Stuff", size = 90})
 local button = misc_section:Button({
 	Name = "Invincible fly (BANNABLE)",
 	Callback = function()
@@ -3568,6 +3568,45 @@ local button = misc_section:Button({
 		end)
 
 		warn("TP Tool created. Equip it and click to teleport to the clicked location.")
+	end
+})
+
+local button = misc_section:Button({
+	Name = "Force Death",
+	Callback = function()
+		local Players = game:GetService("Players")
+		local pl = Players.LocalPlayer
+		if not pl then return end
+
+		-- simple debounce to ensure it only triggers once per click
+		if button._debounce then return end
+		button._debounce = true
+
+		-- try to kill current humanoid first
+		local success, err = pcall(function()
+			local char = pl.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum.Health = 0
+				end
+			end
+		end)
+
+		-- ensure respawn as a fallback (some games might prevent health-based death)
+		spawn(function()
+			wait(0.2)
+			pcall(function()
+				pl:LoadCharacter()
+			end)
+			-- allow button to be pressed again after a short cooldown
+			wait(1)
+			button._debounce = false
+		end)
+
+		if not success then
+			warn("Force Death attempt error:", err)
+		end
 	end
 })
 
