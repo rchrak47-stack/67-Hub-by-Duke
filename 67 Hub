@@ -3326,7 +3326,7 @@
 		end)
 	end})
 
-	local misc_section = misc:Section({Name = "Random Stuff", size = 90})
+	local misc_section = misc:Section({Name = "Random Stuff", size = 145})
 	local button = misc_section:Button({
 		Name = "Invincible fly (BANNABLE)",
 		Callback = function()
@@ -4051,6 +4051,73 @@
 			end
 		end)
 	end
+
+	local button = misc_section:Button({
+		Name = "Rejoin",
+		Callback = function()
+			local TeleportService = game:GetService("TeleportService")
+			local Players = game:GetService("Players")
+			local pl = Players.LocalPlayer
+			if pl then
+				-- Try to teleport to the same server (JobId). If that fails, fall back to teleporting to the place.
+				local ok, err = pcall(function()
+					TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, pl)
+				end)
+				if not ok then
+					pcall(function()
+						TeleportService:Teleport(game.PlaceId, pl)
+					end)
+				end
+			end
+		end
+	})
+
+	local button = misc_section:Button({
+		Name = "Server Hop",
+		Callback = function()
+			local TeleportService = game:GetService("TeleportService")
+			local HttpService = game:GetService("HttpService")
+			local Players = game:GetService("Players")
+			local localPlayer = Players.LocalPlayer
+			local placeId = game.PlaceId
+			local currentJob = tostring(game.JobId)
+
+			-- Try to fetch public server list
+			local ok, res = pcall(function()
+				return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Desc&limit=100"))
+			end)
+
+			if not ok or not res or not res.data then
+				warn("ServerHop: failed to fetch server list, attempting simple rejoin")
+				pcall(function() TeleportService:Teleport(placeId, localPlayer) end)
+				return
+			end
+
+			-- find a server that's not the current one and has space
+			local targetId
+			for _, server in ipairs(res.data) do
+				local sid = tostring(server.id)
+				local playing = server.playing or 0
+				local maxPlayers = server.maxPlayers or 0
+				if sid ~= currentJob and playing < maxPlayers then
+					targetId = sid
+					break
+				end
+			end
+
+			if targetId then
+				local ok2, err = pcall(function()
+					TeleportService:TeleportToPlaceInstance(placeId, targetId, localPlayer)
+				end)
+				if not ok2 then
+					warn("ServerHop: teleport failed:", err)
+				end
+			else
+				warn("ServerHop: no suitable server found, attempting simple rejoin")
+				pcall(function() TeleportService:Teleport(placeId, localPlayer) end)
+			end
+		end
+	})
 
 	aimbot:Turn(true)
 	-- // Returning
