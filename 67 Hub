@@ -887,7 +887,7 @@
 	local aimbot_section3 = aimbot:Section({Name = "Character", size = 80})
 
 	-- create a fourth section on the right side
-	local aimbot_section4 = aimbot:Section({Name = "Player Viwer", size = 120, Side = "Right"})
+	local aimbot_section4 = aimbot:Section({Name = "Player Viwer", size = 110, Side = "Right"})
 
 	-- ensure the new sections have proper layouts (in case they host nested sections)
 	ensureSectionLayouts(aimbot)
