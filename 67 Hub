@@ -851,7 +851,7 @@
 	local misc = window:Page({Name = "Misc"})
 	--
 	local aimbot_section = aimbot:Section({Name = "Movement", size = 160})
-	local aimbot_section2 = aimbot:Section({Name = "Client", size = 120, Side = "Right"})
+	local aimbot_section2 = aimbot:Section({Name = "Client", size = 130, Side = "Right"})
 	-- ensure sections stack instead of overlapping by adding a vertical UIListLayout
 	local function ensureSectionLayouts(page)
 		-- add layout to left holder if missing
@@ -1295,6 +1295,67 @@
 			end
 		end
 	})
+	local toggle = aimbot_section2:Toggle({
+		Name = "Inf Zoom",
+		Default = false,
+		Callback = function(val)
+			local Players = game:GetService("Players")
+			local RunService = game:GetService("RunService")
+			local localPlayer = Players.LocalPlayer
+
+			-- cleanup previous enforcer if present
+			if toggle._enforceConn then
+				pcall(function() toggle._enforceConn:Disconnect() end)
+				toggle._enforceConn = nil
+			end
+
+			-- backup original values once
+			if not toggle._backup and localPlayer then
+				pcall(function()
+					toggle._backup = {
+						Max = localPlayer.CameraMaxZoomDistance,
+						Min = localPlayer.CameraMinZoomDistance
+					}
+				end)
+			end
+
+			if val then
+				-- set to a very large zoom and enforce continuously (prevents other scripts from clamping it)
+				local HUGE_ZOOM = 1e8
+				if localPlayer then
+					pcall(function()
+						localPlayer.CameraMaxZoomDistance = HUGE_ZOOM
+						localPlayer.CameraMinZoomDistance = 0
+					end)
+				end
+
+				-- enforce on RenderStepped to be responsive
+				toggle._enforceConn = RunService.RenderStepped:Connect(function()
+					local lp = Players.LocalPlayer
+					if lp then
+						pcall(function()
+							lp.CameraMaxZoomDistance = HUGE_ZOOM
+							lp.CameraMinZoomDistance = 0
+						end)
+					end
+				end)
+			else
+				-- restore backups and stop enforcing
+				if toggle._enforceConn then
+					pcall(function() toggle._enforceConn:Disconnect() end)
+					toggle._enforceConn = nil
+				end
+				if localPlayer and toggle._backup then
+					pcall(function()
+						localPlayer.CameraMaxZoomDistance = toggle._backup.Max or 400
+						localPlayer.CameraMinZoomDistance = toggle._backup.Min or 0.5
+					end)
+					toggle._backup = nil
+				end
+			end
+		end
+	})
+
 	local toggle = aimbot_section2:Toggle({
 		Name = "No fog",
 		Default = false,
