@@ -2880,7 +2880,7 @@
 	})
 
 	local aiming_section = aiming:Section({Name = "Aimbot", size = 80})
-	local label = aiming_section:Label({Name = "DO NOT TURN BOTH ON"})
+
 	local toggle = aiming_section:Toggle({
 		Name = "Head Aimbot",
 		Default = false,
@@ -2889,6 +2889,39 @@
 			local RunService = game:GetService("RunService")
 			local uis = game:GetService("UserInputService")
 			local localPlayer = Players.LocalPlayer
+
+			-- a small helper to restore mouse/camera/input state safely
+			local rightHeld = false
+			local function restoreInputState()
+				-- restore camera type if we changed it
+				pcall(function()
+					if toggle._origCameraType then
+						local cam = workspace and workspace.CurrentCamera
+						if cam then cam.CameraType = toggle._origCameraType end
+						toggle._origCameraType = nil
+					end
+				end)
+				-- restore mouse behavior (use saved or default)
+				pcall(function()
+					if toggle._origMouseBehavior then
+						uis.MouseBehavior = toggle._origMouseBehavior
+						toggle._origMouseBehavior = nil
+					else
+						uis.MouseBehavior = Enum.MouseBehavior.Default
+					end
+				end)
+				-- restore mouse icon visibility (use saved or show it)
+				pcall(function()
+					if toggle._origMouseIconEnabled ~= nil then
+						uis.MouseIconEnabled = toggle._origMouseIconEnabled
+						toggle._origMouseIconEnabled = nil
+					else
+						uis.MouseIconEnabled = true
+					end
+				end)
+				-- ensure internal flag cleared
+				rightHeld = false
+			end
 
 			-- cleanup previous connections/state
 			if toggle._conn then
@@ -2903,20 +2936,9 @@
 				pcall(function() toggle._inputEnded:Disconnect() end)
 				toggle._inputEnded = nil
 			end
-			-- restore camera and mouse if we changed them before
-			if toggle._origCameraType then
-				local cam = workspace and workspace.CurrentCamera
-				if cam then pcall(function() cam.CameraType = toggle._origCameraType end) end
-				toggle._origCameraType = nil
-			end
-			if toggle._origMouseBehavior then
-				pcall(function() uis.MouseBehavior = toggle._origMouseBehavior end)
-				toggle._origMouseBehavior = nil
-			end
-			if toggle._origMouseIconEnabled ~= nil then
-				pcall(function() uis.MouseIconEnabled = toggle._origMouseIconEnabled end)
-				toggle._origMouseIconEnabled = nil
-			end
+
+			-- ensure input/camera state is restored when toggling off (extra safety)
+			restoreInputState()
 
 			if not val then
 				return
@@ -2925,9 +2947,6 @@
 			-- settings
 			local smoothing = 0.45 -- larger = slower smoothing, 1.0 = instant
 			local maxScreenDistance = 250 -- pixels from mouse to consider a target
-
-			-- track whether right mouse is held
-			local rightHeld = false
 
 			-- camera attachment offset (will be set when right mouse pressed)
 			toggle._cameraOffset = toggle._cameraOffset or nil
@@ -3011,7 +3030,7 @@
 						end
 						pcall(function()
 							uis.MouseBehavior = Enum.MouseBehavior.LockCenter
-							uis.MouseIconEnabled = false
+							uis.MouseIconEnabled = false -- hide cursor while locked
 						end)
 					else
 						-- no valid target: do not change camera/mouse behaviour and clear any locked target
@@ -3026,24 +3045,9 @@
 			-- restore camera and mouse on right mouse release
 			toggle._inputEnded = uis.InputEnded:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton2 then
-					rightHeld = false
-					-- restore camera type
-					if toggle._origCameraType then
-						local cam = workspace and workspace.CurrentCamera
-						if cam then
-							pcall(function() cam.CameraType = toggle._origCameraType end)
-						end
-						toggle._origCameraType = nil
-					end
-					-- restore mouse behavior and icon
-					if toggle._origMouseBehavior then
-						pcall(function() uis.MouseBehavior = toggle._origMouseBehavior end)
-						toggle._origMouseBehavior = nil
-					end
-					if toggle._origMouseIconEnabled ~= nil then
-						pcall(function() uis.MouseIconEnabled = toggle._origMouseIconEnabled end)
-						toggle._origMouseIconEnabled = nil
-					end
+					-- use the shared restore so we always reset everything
+					restoreInputState()
+
 					-- clear stored offset and locked head
 					toggle._cameraOffset = nil
 					toggle._lockedHead = nil
@@ -3089,242 +3093,219 @@
 			end)
 		end
 	})
-	-- Ensure the mouse cursor stays visible while the aimbot forces the camera to Scriptable
-	do
-		local RunService = game:GetService("RunService")
-		local uis = game:GetService("UserInputService")
-		local origIconEnabled = uis.MouseIconEnabled
 
-		-- Keep cursor visible when camera is Scriptable, restore when not
-		local conn
-		conn = RunService.RenderStepped:Connect(function()
-			local cam = workspace and workspace.CurrentCamera
-			if cam and cam.CameraType == Enum.CameraType.Scriptable then
-				-- force the icon visible while scriptable camera is active
-				if not uis.MouseIconEnabled then
-					pcall(function() uis.MouseIconEnabled = true end)
-				end
-			else
-				-- restore original state when not using scriptable camera
-				if uis.MouseIconEnabled ~= origIconEnabled then
-					pcall(function() uis.MouseIconEnabled = origIconEnabled end)
-				end
+	local toggle = aiming_section:Toggle({
+		Name = "Torso Aimbot",
+		Default = false,
+		Callback = function(val)
+			local Players = game:GetService("Players")
+			local RunService = game:GetService("RunService")
+			local uis = game:GetService("UserInputService")
+			local localPlayer = Players.LocalPlayer
+
+			-- a small helper to restore mouse/camera/input state safely
+			local rightHeld = false
+			local function restoreInputState()
+				-- restore camera type if we changed it
+				pcall(function()
+					if toggle._origCameraType then
+						local cam = workspace and workspace.CurrentCamera
+						if cam then cam.CameraType = toggle._origCameraType end
+						toggle._origCameraType = nil
+					end
+				end)
+				-- restore mouse behavior (use saved or default)
+				pcall(function()
+					if toggle._origMouseBehavior then
+						uis.MouseBehavior = toggle._origMouseBehavior
+						toggle._origMouseBehavior = nil
+					else
+						uis.MouseBehavior = Enum.MouseBehavior.Default
+					end
+				end)
+				-- restore mouse icon visibility (use saved or show it)
+				pcall(function()
+					if toggle._origMouseIconEnabled ~= nil then
+						uis.MouseIconEnabled = toggle._origMouseIconEnabled
+						toggle._origMouseIconEnabled = nil
+					else
+						uis.MouseIconEnabled = true
+					end
+				end)
+				-- ensure internal flag cleared
+				rightHeld = false
 			end
-		end)
 
-		-- clean up automatically if script is reloaded/removed
-		spawn(function()
-			repeat wait() until not conn or conn.Connected == false
-			if conn and conn.Connected then
-				pcall(function() conn:Disconnect() end)
+			-- cleanup previous connections/state
+			if toggle._conn then
+				pcall(function() toggle._conn:Disconnect() end)
+				toggle._conn = nil
 			end
-		end)
-	end
+			if toggle._inputBegan then
+				pcall(function() toggle._inputBegan:Disconnect() end)
+				toggle._inputBegan = nil
+			end
+			if toggle._inputEnded then
+				pcall(function() toggle._inputEnded:Disconnect() end)
+				toggle._inputEnded = nil
+			end
 
-	local toggle = aiming_section:Toggle({Name = "Torso Aimbot", Default = false, Callback = function(val)
-		local Players = game:GetService("Players")
-		local RunService = game:GetService("RunService")
-		local uis = game:GetService("UserInputService")
-		local localPlayer = Players.LocalPlayer
+			-- ensure input/camera state is restored when toggling off (extra safety)
+			restoreInputState()
 
-		-- cleanup previous connections/state
-		if toggle._conn then
-			pcall(function() toggle._conn:Disconnect() end)
-			toggle._conn = nil
-		end
-		if toggle._inputBegan then
-			pcall(function() toggle._inputBegan:Disconnect() end)
-			toggle._inputBegan = nil
-		end
-		if toggle._inputEnded then
-			pcall(function() toggle._inputEnded:Disconnect() end)
-			toggle._inputEnded = nil
-		end
-		-- restore camera and mouse if we changed them before
-		if toggle._origCameraType then
-			local cam = workspace and workspace.CurrentCamera
-			if cam then pcall(function() cam.CameraType = toggle._origCameraType end) end
-			toggle._origCameraType = nil
-		end
-		if toggle._origMouseBehavior then
-			pcall(function() uis.MouseBehavior = toggle._origMouseBehavior end)
-			toggle._origMouseBehavior = nil
-		end
-		if toggle._origMouseIconEnabled ~= nil then
-			pcall(function() uis.MouseIconEnabled = toggle._origMouseIconEnabled end)
-			toggle._origMouseIconEnabled = nil
-		end
+			if not val then
+				return
+			end
 
-		if not val then
-			return
-		end
+			-- settings
+			local smoothing = 0.45 -- larger = slower smoothing, 1.0 = instant
+			local maxScreenDistance = 250 -- pixels from mouse to consider a target
 
-		-- settings
-		local smoothing = 0.45 -- larger = slower smoothing, 1.0 = instant
-		local maxScreenDistance = 250 -- pixels from mouse to consider a target
+			-- camera attachment offset (will be set when right mouse pressed)
+			toggle._cameraOffset = toggle._cameraOffset or nil
 
-		-- track whether right mouse is held
-		local rightHeld = false
+			-- which head we locked onto when right was pressed
+			toggle._lockedHead = nil
+			toggle._lockedPlayer = nil
+			toggle._lockedDist = nil
 
-		-- camera attachment offset (will be set when right mouse pressed)
-		toggle._cameraOffset = toggle._cameraOffset or nil
+			-- helper to get a sensible follow position (HumanoidRootPart preferred)
+			local function getFollowRoot(character)
+				if not character then return nil end
+				return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Head")
+			end
 
-		-- which torso we locked onto when right was pressed
-		toggle._lockedTorso = nil
-		toggle._lockedPlayer = nil
-		toggle._lockedDist = nil
+			-- set camera to Scriptable when right mouse first pressed and capture offset & lock mouse and capture target
+			toggle._inputBegan = uis.InputBegan:Connect(function(input, gameProcessed)
+				if gameProcessed then return end
+				if input.UserInputType == Enum.UserInputType.MouseButton2 then
+					local cam = workspace and workspace.CurrentCamera
 
-		-- helper to get a sensible follow position (HumanoidRootPart preferred)
-		local function getFollowRoot(character)
-			if not character then return nil end
-			return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Head")
-		end
-
-		-- set camera to Scriptable when right mouse first pressed and capture offset & lock mouse and capture target
-		toggle._inputBegan = uis.InputBegan:Connect(function(input, gameProcessed)
-			if gameProcessed then return end
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then
-				local cam = workspace and workspace.CurrentCamera
-
-				-- capture the nearest torso at the moment of pressing so cursor movement after press cannot change the target
-				local mousePos = uis:GetMouseLocation()
-				local bestPl, bestTorso, bestDist = nil, nil, math.huge
-				if cam then
-					for _, pl in ipairs(Players:GetPlayers()) do
-						if pl ~= localPlayer and pl.Character and pl.Character.Parent then
-							local torso = pl.Character:FindFirstChild("Torso") or pl.Character:FindFirstChild("UpperTorso") or pl.Character:FindFirstChild("HumanoidRootPart") or pl.Character:FindFirstChild("Head")
-							if torso then
-								local ok, v3 = pcall(function()
-									return cam:WorldToViewportPoint(torso.Position)
-								end)
-								if ok and v3 and v3.Z > 0 then
-									local dx = v3.X - mousePos.X
-									local dy = v3.Y - mousePos.Y
-									local dist = math.sqrt(dx*dx + dy*dy)
-									if dist < bestDist then
-										bestDist = dist
-										bestPl = pl
-										bestTorso = torso
+					-- capture the nearest head at the moment of pressing so cursor movement after press cannot change the target
+					local mousePos = uis:GetMouseLocation()
+					local bestPl, bestHead, bestDist = nil, nil, math.huge
+					if cam then
+						for _, pl in ipairs(Players:GetPlayers()) do
+							if pl ~= localPlayer and pl.Character and pl.Character.Parent then
+								local head = pl.Character:FindFirstChild("Head") or pl.Character:FindFirstChild("HumanoidRootPart") or pl.Character:FindFirstChild("Torso") or pl.Character:FindFirstChild("UpperTorso")
+								if head then
+									local ok, v3 = pcall(function()
+										return cam:WorldToViewportPoint(head.Position)
+									end)
+									if ok and v3 and v3.Z > 0 then
+										local dx = v3.X - mousePos.X
+										local dy = v3.Y - mousePos.Y
+										local dist = math.sqrt(dx*dx + dy*dy)
+										if dist < bestDist then
+											bestDist = dist
+											bestPl = pl
+											bestHead = head
+										end
 									end
 								end
 							end
 						end
 					end
-				end
 
-				-- only engage aimbot camera/mouse locking if we actually found a nearby target
-				if bestTorso and bestDist and bestDist <= maxScreenDistance then
-					-- mark that right is held for the aimbot updater
-					rightHeld = true
+					-- only engage aimbot camera/mouse locking if we actually found a nearby target
+					if bestHead and bestDist and bestDist <= maxScreenDistance then
+						-- mark that right is held for the aimbot updater
+						rightHeld = true
 
-					-- store locked target info
-					toggle._lockedTorso = bestTorso
-					toggle._lockedPlayer = bestPl
-					toggle._lockedDist = bestDist
+						-- store locked target info
+						toggle._lockedHead = bestHead
+						toggle._lockedPlayer = bestPl
+						toggle._lockedDist = bestDist
 
-					-- now switch camera to Scriptable and capture original camera/mouse state to restore later
-					if cam and not toggle._origCameraType then
-						toggle._origCameraType = cam.CameraType
-						pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
-					end
+						-- now switch camera to Scriptable and capture original camera/mouse state to restore later
+						if cam and not toggle._origCameraType then
+							toggle._origCameraType = cam.CameraType
+							pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
+						end
 
-					-- compute offset relative to player's root so camera follows character
-					local char = localPlayer and localPlayer.Character
-					local root = getFollowRoot(char)
-					if cam and root then
-						-- store desired camera offset so we can keep camera positioned relative to player
-						toggle._cameraOffset = cam.CFrame.Position - root.Position
+						-- compute offset relative to player's root so camera follows character
+						local char = localPlayer and localPlayer.Character
+						local root = getFollowRoot(char)
+						if cam and root then
+							-- store desired camera offset so we can keep camera positioned relative to player
+							toggle._cameraOffset = cam.CFrame.Position - root.Position
+						else
+							-- sensible default if we couldn't compute an offset
+							toggle._cameraOffset = Vector3.new(0, 2, 0)
+						end
+
+						-- lock the mouse to center and hide the cursor while right is held; store original values to restore later
+						if not toggle._origMouseBehavior then
+							toggle._origMouseBehavior = uis.MouseBehavior
+						end
+						if toggle._origMouseIconEnabled == nil then
+							toggle._origMouseIconEnabled = uis.MouseIconEnabled
+						end
+						pcall(function()
+							uis.MouseBehavior = Enum.MouseBehavior.LockCenter
+							uis.MouseIconEnabled = false -- hide cursor while locked
+						end)
 					else
-						-- sensible default if we couldn't compute an offset
-						toggle._cameraOffset = Vector3.new(0, 2, 0)
+						-- no valid target: do not change camera/mouse behaviour and clear any locked target
+						rightHeld = false
+						toggle._lockedHead = nil
+						toggle._lockedPlayer = nil
+						toggle._lockedDist = nil
 					end
+				end
+			end)
 
-					-- lock the mouse to center and hide the cursor while right is held; store original values to restore later
-					if not toggle._origMouseBehavior then
-						toggle._origMouseBehavior = uis.MouseBehavior
-					end
-					if toggle._origMouseIconEnabled == nil then
-						toggle._origMouseIconEnabled = uis.MouseIconEnabled
-					end
-					pcall(function()
-						uis.MouseBehavior = Enum.MouseBehavior.LockCenter
-						uis.MouseIconEnabled = false
-					end)
-				else
-					-- no valid target: do not change camera/mouse behaviour and clear any locked target
-					rightHeld = false
-					toggle._lockedTorso = nil
+			-- restore camera and mouse on right mouse release
+			toggle._inputEnded = uis.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton2 then
+					-- use the shared restore so we always reset everything
+					restoreInputState()
+
+					-- clear stored offset and locked head
+					toggle._cameraOffset = nil
+					toggle._lockedHead = nil
 					toggle._lockedPlayer = nil
 					toggle._lockedDist = nil
 				end
-			end
-		end)
-
-		-- restore camera and mouse on right mouse release
-		toggle._inputEnded = uis.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then
-				rightHeld = false
-				-- restore camera type
-				if toggle._origCameraType then
-					local cam = workspace and workspace.CurrentCamera
-					if cam then
-						pcall(function() cam.CameraType = toggle._origCameraType end)
-					end
-					toggle._origCameraType = nil
-				end
-				-- restore mouse behavior and icon
-				if toggle._origMouseBehavior then
-					pcall(function() uis.MouseBehavior = toggle._origMouseBehavior end)
-					toggle._origMouseBehavior = nil
-				end
-				if toggle._origMouseIconEnabled ~= nil then
-					pcall(function() uis.MouseIconEnabled = toggle._origMouseIconEnabled end)
-					toggle._origMouseIconEnabled = nil
-				end
-				-- clear stored offset and locked torso
-				toggle._cameraOffset = nil
-				toggle._lockedTorso = nil
-				toggle._lockedPlayer = nil
-				toggle._lockedDist = nil
-			end
-		end)
-
-		-- main updater: while right mouse is held, keep camera attached to character position and smoothly look at locked torso (only when a torso is locked)
-		toggle._conn = RunService.RenderStepped:Connect(function()
-			-- only operate while right mouse is held
-			if not rightHeld then return end
-
-			local cam = workspace and workspace.CurrentCamera
-			if not cam then return end
-
-			-- ensure character/root available
-			local char = localPlayer and localPlayer.Character
-			local root = getFollowRoot(char)
-			if not root then return end
-
-			-- if no torso was locked when right was pressed, do not perform aimbot aiming
-			if not (toggle._lockedTorso and toggle._lockedTorso.Parent) then
-				return
-			end
-
-			-- compute camera desired position (follow root + stored offset)
-			local camOffset = toggle._cameraOffset or Vector3.new(0, 2, 0)
-			local desiredPos = root.Position + camOffset
-
-			-- determine look target (we know _lockedTorso exists because of the check above)
-			local lookTarget = toggle._lockedTorso.Position
-
-			-- build desired CFrame and smooth toward it
-			local ok, desiredCFrame = pcall(function()
-				return CFrame.new(desiredPos, lookTarget)
 			end)
-			if ok and desiredCFrame then
-				pcall(function()
-					cam.CFrame = cam.CFrame:Lerp(desiredCFrame, math.clamp(1 - smoothing, 0, 1))
+
+			-- main updater: while right mouse is held, keep camera attached to character position and smoothly look at locked head (only when a head is locked)
+			toggle._conn = RunService.RenderStepped:Connect(function()
+				-- only operate while right mouse is held
+				if not rightHeld then return end
+
+				local cam = workspace and workspace.CurrentCamera
+				if not cam then return end
+
+				-- ensure character/root available
+				local char = localPlayer and localPlayer.Character
+				local root = getFollowRoot(char)
+				if not root then return end
+
+				-- if no head was locked when right was pressed, do not perform aimbot aiming
+				if not (toggle._lockedHead and toggle._lockedHead.Parent) then
+					return
+				end
+
+				-- compute camera desired position (follow root + stored offset)
+				local camOffset = toggle._cameraOffset or Vector3.new(0, 2, 0)
+				local desiredPos = root.Position + camOffset
+
+				-- determine look target (we know _lockedHead exists because of the check above)
+				local lookTarget = toggle._lockedHead.Position
+
+				-- build desired CFrame and smooth toward it
+				local ok, desiredCFrame = pcall(function()
+					return CFrame.new(desiredPos, lookTarget)
 				end)
-			end
-		end)
-	end})
+				if ok and desiredCFrame then
+					pcall(function()
+						cam.CFrame = cam.CFrame:Lerp(desiredCFrame, math.clamp(1 - smoothing, 0, 1))
+					end)
+				end
+			end)
+		end
+	})
 
 	local misc_section = misc:Section({Name = "Random Stuff", size = 145})
 	local button = misc_section:Button({
