@@ -28,8 +28,19 @@
 			end
 			--
 			function utility:Connection(connectionInfo)
+			function utility:Connection(connectionInfo)
 				local connectionInfo = connectionInfo or {}
-				--
+				-- Only create and track the connection. Do not modify UserInputService or mouse state here.
+				if connectionInfo.Type then
+					local ok, connection = pcall(function()
+						return connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
+					end)
+					if ok and connection then
+						table.insert(obelus.connections, connection)
+						return connection
+					end
+				end
+			end--
 				if connectionInfo.Type then
 					local connection = connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
 					--
@@ -86,40 +97,7 @@
 					end
 				end)
 
-				-- ensure mouse/cursor are always unlocked while the UI is visible (enforced each frame)
-				do
-					local RunService = game:GetService("RunService")
-					local unlockConn
-					local function enableMouseUnlock()
-						if unlockConn then return end
-						unlockConn = RunService.RenderStepped:Connect(function()
-							pcall(function()
-								uis.MouseBehavior = Enum.MouseBehavior.Default
-								uis.MouseIconEnabled = true
-							end)
-						end)
-					end
-					local function disableMouseUnlock()
-						if unlockConn then
-							unlockConn:Disconnect()
-							unlockConn = nil
-						end
-					end
-
-					-- react to the ScreenGui being shown/hidden
-					screen:GetPropertyChangedSignal("Enabled"):Connect(function()
-						if screen.Enabled then
-							enableMouseUnlock()
-						else
-							disableMouseUnlock()
-						end
-					end)
-
-					-- if the screen starts enabled, enforce immediately
-					if screen.Enabled then
-						enableMouseUnlock()
-					end
-				end
+				-- mouse unlock enforcement removed to avoid interfering with normal camera control in third person
 				--
 				local main = utility:Create({Type = "Frame", Properties = {
 					AnchorPoint = Vector2.new(0.5, 0.5),
